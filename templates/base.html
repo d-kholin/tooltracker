@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+<head>
+  <title>Tool Tracker</title>
+</head>
+<body>
+  <nav>
+    <a href="{{ url_for('index') }}">Home</a> |
+    <a href="{{ url_for('add_tool') }}">Add Tool</a> |
+    <a href="{{ url_for('report') }}">Report</a>
+  </nav>
+  <hr>
+  {% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <ul>
+    {% for m in messages %}
+      <li>{{ m }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</body>
+</html>

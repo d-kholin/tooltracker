@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Lend Tool {{ tool_id }}</h1>
+<form method="post">
+  <label>Person: <input type="text" name="person" required></label>
+  <button type="submit">Lend</button>
+</form>
+{% endblock %}

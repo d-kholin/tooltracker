@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Loans by Person</h1>
+<table border="1">
+<tr><th>Person</th><th>Tools Borrowed</th></tr>
+{% for row in rows %}
+<tr><td>{{ row.name }}</td><td>{{ row.count }}</td></tr>
+{% endfor %}
+</table>
+{% endblock %}
