@@ -1,7 +1,7 @@
 # Tool Tracker
 
 Web application to manage an inventory of tools and track loans. Data is stored in a SQLite database (`tooltracker.db`).
-The application runs with Flask and can be executed via Docker.
+The application runs with Flask and now uses [Bootstrap](https://getbootstrap.com/) for a modern, responsive interface. It can be executed via Docker.
 
 ## Features
 
