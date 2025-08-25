@@ -5,17 +5,30 @@
   <div class="col-12">
     <label class="form-label">Person</label>
     <input type="text" id="person-search" class="form-control mb-2" placeholder="Search people">
-    <select class="form-select" name="person_id" required id="person-select">
-      <option value="" disabled selected>Select person</option>
-      {% for p in people %}
-      <option value="{{ p.id }}">{{ p.name }}</option>
-      {% endfor %}
-      <option value="__add_new__">Add new person...</option>
-    </select>
+
+    <div id="person-results" class="list-group mb-2 d-none"></div>
+    <button type="button" id="show-add-person" class="btn btn-link p-0">Add new person</button>
+    <div id="add-person-form" class="row g-2 mt-2 d-none">
+      <div class="col-md-4">
+        <input type="text" id="new-person-name" class="form-control" placeholder="Name">
+      </div>
+      <div class="col-md-4">
+        <input type="text" id="new-person-contact" class="form-control" placeholder="Contact info">
+      </div>
+      <div class="col-auto">
+        <button type="button" id="add-person-submit" class="btn btn-secondary">Save</button>
+      </div>
+    </div>
+    <input type="hidden" name="person_id" id="person-id" required>
+
   </div>
   <div class="col-12">
     <button type="submit" class="btn btn-primary">Lend</button>
   </div>
 </form>
+<script>
+  window.peopleData = {{ people|tojson }};
+</script>
+
 <script src="{{ url_for('static', filename='js/lend.js') }}"></script>
 {% endblock %}

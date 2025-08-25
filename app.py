@@ -156,7 +156,7 @@ def lend_tool(tool_id):
     with get_conn() as conn:
         c = conn.cursor()
         c.execute("SELECT id, name FROM people ORDER BY name")
-        people = c.fetchall()
+        people = [dict(row) for row in c.fetchall()]
         if not people:
             flash('No people available. Add a person first.')
             return redirect(url_for('people'))
