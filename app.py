@@ -166,6 +166,60 @@ def return_tool(tool_id):
     return redirect(url_for('index'))
 
 
+@app.route('/people', methods=['GET', 'POST'])
+def people():
+    if request.method == 'POST':
+        name = request.form['name']
+        with get_conn() as conn:
+            c = conn.cursor()
+            try:
+                c.execute("INSERT INTO people (name) VALUES (?)", (name,))
+                conn.commit()
+            except sqlite3.IntegrityError:
+                flash('Person already exists')
+        return redirect(url_for('people'))
+    with get_conn() as conn:
+        c = conn.cursor()
+        c.execute("SELECT id, name FROM people ORDER BY name")
+        people = c.fetchall()
+    return render_template('people.html', people=people)
+
+
+@app.route('/people/<int:person_id>/delete', methods=['POST'])
+def delete_person(person_id):
+    with get_conn() as conn:
+        c = conn.cursor()
+        c.execute("SELECT COUNT(*) FROM loans WHERE person_id=?", (person_id,))
+        if c.fetchone()[0] > 0:
+            flash('Cannot delete person: existing loan records')
+        else:
+            c.execute("DELETE FROM people WHERE id=?", (person_id,))
+            conn.commit()
+    return redirect(url_for('people'))
+
+
+@app.route('/people/<int:person_id>')
+def person_detail(person_id):
+    with get_conn() as conn:
+        c = conn.cursor()
+        c.execute("SELECT name FROM people WHERE id=?", (person_id,))
+        person = c.fetchone()
+        if not person:
+            return redirect(url_for('people'))
+        c.execute(
+            """
+            SELECT t.name AS tool_name, l.lent_on, l.returned_on
+            FROM loans l
+            JOIN tools t ON l.tool_id = t.id
+            WHERE l.person_id=?
+            ORDER BY l.lent_on DESC
+            """,
+            (person_id,),
+        )
+        loans = c.fetchall()
+    return render_template('person_loans.html', person=person, loans=loans)
+
+
 @app.route('/report')
 def report():
     with get_conn() as conn:
