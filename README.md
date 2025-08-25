@@ -5,7 +5,7 @@ The backend runs with Flask and the dashboard is now built with a lightweight Re
 
 ## Features
 
-- Add, delete, and list tools
+- Add, edit, delete, and list tools
 - Upload optional images for each tool
 - Record tool value
 - Lend tools to people and record return date
