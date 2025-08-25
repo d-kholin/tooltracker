@@ -44,7 +44,7 @@ const ToolCard = ({ tool }) => {
     console.log('Target tagName:', e.target.tagName);
     console.log('Target className:', e.target.className);
     console.log('Target id:', e.target.id);
-    console.log('Target textContent:', e.target.textContent?.substring(0, 50));
+    console.log('Target textContent:', e.target.textContent ? e.target.textContent.substring(0, 50) : '');
     
     // Check if we clicked on an action element - be more specific
     const target = e.target;
