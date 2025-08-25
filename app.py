@@ -162,7 +162,7 @@ def return_tool(tool_id):
                 "UPDATE loans SET returned_on=? WHERE id=?",
                 (returned_on, row[0]),
             )
-            conn.commit()
+        conn.commit()
     return redirect(url_for('index'))
 
 
@@ -235,6 +235,38 @@ def report():
         )
         rows = c.fetchall()
     return render_template('report.html', rows=rows)
+
+
+@app.route('/edit/<int:tool_id>', methods=['GET', 'POST'])
+def edit_tool(tool_id):
+    with get_conn() as conn:
+        c = conn.cursor()
+        if request.method == 'POST':
+            name = request.form['name']
+            description = request.form.get('description', '')
+            value_raw = request.form.get('value')
+            value = float(value_raw) if value_raw else 0
+            image_file = request.files.get('image')
+            if image_file and image_file.filename:
+                os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+                filename = secure_filename(image_file.filename)
+                save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                image_file.save(save_path)
+                image_path = os.path.join('images', filename)
+                c.execute(
+                    "UPDATE tools SET name=?, description=?, value=?, image_path=? WHERE id=?",
+                    (name, description, value, image_path, tool_id),
+                )
+            else:
+                c.execute(
+                    "UPDATE tools SET name=?, description=?, value=? WHERE id=?",
+                    (name, description, value, tool_id),
+                )
+            conn.commit()
+            return redirect(url_for('index'))
+        c.execute("SELECT * FROM tools WHERE id=?", (tool_id,))
+        tool = c.fetchone()
+    return render_template('edit_tool.html', tool=tool)
 
 
 if __name__ == '__main__':
