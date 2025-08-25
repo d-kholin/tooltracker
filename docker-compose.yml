@@ -7,7 +7,7 @@ services:
       - "5000:5000"
     volumes:
       # Mount the current directory for development
-      - .:/app
+      #- .:/app
       # Use named volumes for persistent storage
       - tooltracker_data:/app/data
       - tooltracker_static:/app/static
