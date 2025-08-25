@@ -27,15 +27,43 @@ const QuickAddTool = ({ onAdd }) => {
   );
 };
 
-const ToolCard = ({ tool }) => (
-  <div className="bg-white rounded-xl p-4 shadow-sm flex justify-between items-center">
-    <div>
-      <p className="font-medium">{tool.name}</p>
-      <p className="text-xs text-gray-500">{tool.borrower ? `Lent to ${tool.borrower}` : 'Available'}</p>
+const ToolCard = ({ tool }) => {
+  const navigateToEdit = () => {
+    window.location = `/edit/${tool.id}`;
+  };
+  return (
+    <div
+      onClick={navigateToEdit}
+      className="bg-white rounded-xl p-4 shadow-sm flex justify-between items-center hover:shadow-md transition cursor-pointer"
+    >
+      <div>
+        <p className="font-medium">{tool.name}</p>
+        <p className="text-xs text-gray-500">
+          {tool.borrower ? `Lent to ${tool.borrower}` : 'Available'}
+        </p>
+      </div>
+      {tool.borrower ? (
+        <form
+          method="POST"
+          action={`/return/${tool.id}`}
+          onClick={e => e.stopPropagation()}
+        >
+          <button type="submit" className="text-sm text-red-500">
+            Return
+          </button>
+        </form>
+      ) : (
+        <a
+          href={`/lend/${tool.id}`}
+          className="text-sm text-brand"
+          onClick={e => e.stopPropagation()}
+        >
+          Lend
+        </a>
+      )}
     </div>
-    <a href={`/edit/${tool.id}`} className="text-sm text-brand">Edit</a>
-  </div>
-);
+  );
+};
 
 const BottomNav = ({ current }) => {
   const items = [
