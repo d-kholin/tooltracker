@@ -4,7 +4,12 @@
 <form method="post" class="row g-3">
   <div class="col-12">
     <label class="form-label">Person</label>
-    <input type="text" class="form-control" name="person" required>
+    <select class="form-select" name="person_id" required>
+      <option value="" disabled selected>Select person</option>
+      {% for p in people %}
+      <option value="{{ p.id }}">{{ p.name }}</option>
+      {% endfor %}
+    </select>
   </div>
   <div class="col-12">
     <button type="submit" class="btn btn-primary">Lend</button>

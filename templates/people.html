@@ -2,8 +2,11 @@
 {% block content %}
 <h1 class="mb-4">People</h1>
 <form method="post" class="row g-3 mb-4">
-  <div class="col-auto">
-    <input type="text" class="form-control" name="name" placeholder="New person name" required>
+  <div class="col-md-4">
+    <input type="text" class="form-control" name="name" placeholder="Name" required>
+  </div>
+  <div class="col-md-4">
+    <input type="text" class="form-control" name="contact_info" placeholder="Contact info">
   </div>
   <div class="col-auto">
     <button type="submit" class="btn btn-primary mb-3">Add Person</button>
@@ -11,13 +14,15 @@
 </form>
 <table class="table table-striped">
   <thead>
-    <tr><th>Name</th><th>Actions</th></tr>
+    <tr><th>Name</th><th>Contact Info</th><th>Actions</th></tr>
   </thead>
   <tbody>
   {% for p in people %}
     <tr>
       <td><a href="{{ url_for('person_detail', person_id=p.id) }}">{{ p.name }}</a></td>
+      <td>{{ p.contact_info }}</td>
       <td>
+        <a href="{{ url_for('edit_person', person_id=p.id) }}" class="btn btn-sm btn-secondary">Edit</a>
         <form action="{{ url_for('delete_person', person_id=p.id) }}" method="post" class="d-inline">
           <button type="submit" class="btn btn-sm btn-danger">Delete</button>
         </form>
