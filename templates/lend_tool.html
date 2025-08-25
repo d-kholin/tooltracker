@@ -1,8 +1,18 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>Lend Tool {{ tool_id }}</h1>
-<form method="post">
-  <label>Person: <input type="text" name="person" required></label>
-  <button type="submit">Lend</button>
+<h1 class="mb-4">Lend Tool {{ tool_id }}</h1>
+<form method="post" class="row g-3">
+  <div class="col-12">
+    <label class="form-label">Person</label>
+    <select class="form-select" name="person_id" required>
+      <option value="" disabled selected>Select person</option>
+      {% for p in people %}
+      <option value="{{ p.id }}">{{ p.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-12">
+    <button type="submit" class="btn btn-primary">Lend</button>
+  </div>
 </form>
 {% endblock %}

@@ -1,28 +1,32 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>Tools</h1>
-<table border="1">
-<tr><th>ID</th><th>Name</th><th>Value</th><th>Image</th><th>Status</th><th>Actions</th></tr>
-{% for t in tools %}
-<tr>
-  <td>{{ t.id }}</td>
-  <td>{{ t.name }}</td>
-  <td>${{ '%.2f'|format(t.value or 0) }}</td>
-  <td>{% if t.image_path %}<img src="{{ url_for('static', filename=t.image_path) }}" width="64">{% endif %}</td>
-  <td>{% if t.borrower %}Lent to {{ t.borrower }} on {{ t.lent_on }}{% else %}Available{% endif %}</td>
-  <td>
-    {% if not t.borrower %}
-      <a href="{{ url_for('lend_tool', tool_id=t.id) }}">Lend</a>
-    {% else %}
-      <form action="{{ url_for('return_tool', tool_id=t.id) }}" method="post" style="display:inline">
-        <button type="submit">Return</button>
+<h1 class="mb-4">Tools</h1>
+<table class="table table-striped align-middle">
+  <thead>
+    <tr><th>ID</th><th>Name</th><th>Value</th><th>Image</th><th>Status</th><th>Actions</th></tr>
+  </thead>
+  <tbody>
+  {% for t in tools %}
+  <tr>
+    <td>{{ t.id }}</td>
+    <td><a href="{{ url_for('edit_tool', tool_id=t.id) }}">{{ t.name }}</a></td>
+    <td>${{ '%.2f'|format(t.value or 0) }}</td>
+    <td>{% if t.image_path %}<img src="{{ url_for('static', filename=t.image_path) }}" width="64" class="img-thumbnail">{% endif %}</td>
+    <td>{% if t.borrower %}Lent to {{ t.borrower }} on {{ t.lent_on }}{% else %}Available{% endif %}</td>
+    <td>
+      {% if not t.borrower %}
+        <a href="{{ url_for('lend_tool', tool_id=t.id) }}" class="btn btn-sm btn-primary">Lend</a>
+      {% else %}
+        <form action="{{ url_for('return_tool', tool_id=t.id) }}" method="post" class="d-inline">
+          <button type="submit" class="btn btn-sm btn-secondary">Return</button>
+        </form>
+      {% endif %}
+      <form action="{{ url_for('delete_tool', tool_id=t.id) }}" method="post" class="d-inline">
+        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
       </form>
-    {% endif %}
-    <form action="{{ url_for('delete_tool', tool_id=t.id) }}" method="post" style="display:inline">
-      <button type="submit">Delete</button>
-    </form>
-  </td>
-</tr>
-{% endfor %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
 </table>
 {% endblock %}

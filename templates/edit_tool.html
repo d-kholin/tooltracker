@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="mb-4">Edit Tool</h1>
+<form method="post" enctype="multipart/form-data" class="row g-3">
+  <div class="col-12">
+    <label class="form-label">Name</label>
+    <input type="text" class="form-control" name="name" value="{{ tool.name }}" required>
+  </div>
+  <div class="col-12">
+    <label class="form-label">Description</label>
+    <input type="text" class="form-control" name="description" value="{{ tool.description }}">
+  </div>
+  <div class="col-12">
+    <label class="form-label">Value</label>
+    <input type="number" step="0.01" class="form-control" name="value" value="{{ tool.value }}">
+  </div>
+  <div class="col-12">
+    <label class="form-label">Image</label>
+    {% if tool.image_path %}
+    <div class="mb-2"><img src="{{ url_for('static', filename=tool.image_path) }}" width="128" class="img-thumbnail"></div>
+    {% endif %}
+    <input type="file" class="form-control" name="image">
+  </div>
+  <div class="col-12">
+    <button type="submit" class="btn btn-primary">Update</button>
+  </div>
+</form>
+{% endblock %}

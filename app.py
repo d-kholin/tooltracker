@@ -35,10 +35,16 @@ def init_db():
             """
             CREATE TABLE IF NOT EXISTS people (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL UNIQUE
+                name TEXT NOT NULL UNIQUE,
+                contact_info TEXT
             )
             """
         )
+        # Ensure contact_info column exists for older databases
+        try:
+            c.execute("ALTER TABLE people ADD COLUMN contact_info TEXT")
+        except sqlite3.OperationalError:
+            pass
         c.execute(
             """
             CREATE TABLE IF NOT EXISTS loans (
@@ -120,7 +126,7 @@ def delete_tool(tool_id):
 @app.route('/lend/<int:tool_id>', methods=['GET', 'POST'])
 def lend_tool(tool_id):
     if request.method == 'POST':
-        person = request.form['person']
+        person_id = request.form.get('person_id')
         with get_conn() as conn:
             c = conn.cursor()
             c.execute(
@@ -130,21 +136,26 @@ def lend_tool(tool_id):
             if c.fetchone()[0] > 0:
                 flash('Tool already lent out')
             else:
-                c.execute("SELECT id FROM people WHERE name=?", (person,))
+                c.execute("SELECT id FROM people WHERE id=?", (person_id,))
                 row = c.fetchone()
-                if row:
-                    person_id = row[0]
+                if not row:
+                    flash('Person not found')
                 else:
-                    c.execute("INSERT INTO people (name) VALUES (?)", (person,))
-                    person_id = c.lastrowid
-                lent_on = datetime.date.today().isoformat()
-                c.execute(
-                    "INSERT INTO loans (tool_id, person_id, lent_on) VALUES (?, ?, ?)",
-                    (tool_id, person_id, lent_on),
-                )
-                conn.commit()
+                    lent_on = datetime.date.today().isoformat()
+                    c.execute(
+                        "INSERT INTO loans (tool_id, person_id, lent_on) VALUES (?, ?, ?)",
+                        (tool_id, person_id, lent_on),
+                    )
+                    conn.commit()
         return redirect(url_for('index'))
-    return render_template('lend_tool.html', tool_id=tool_id)
+    with get_conn() as conn:
+        c = conn.cursor()
+        c.execute("SELECT id, name FROM people ORDER BY name")
+        people = c.fetchall()
+        if not people:
+            flash('No people available. Add a person first.')
+            return redirect(url_for('people'))
+    return render_template('lend_tool.html', tool_id=tool_id, people=people)
 
 
 @app.route('/return/<int:tool_id>', methods=['POST'])
@@ -162,8 +173,89 @@ def return_tool(tool_id):
                 "UPDATE loans SET returned_on=? WHERE id=?",
                 (returned_on, row[0]),
             )
-            conn.commit()
+        conn.commit()
     return redirect(url_for('index'))
+
+
+@app.route('/people', methods=['GET', 'POST'])
+def people():
+    if request.method == 'POST':
+        name = request.form['name']
+        contact_info = request.form.get('contact_info', '')
+        with get_conn() as conn:
+            c = conn.cursor()
+            try:
+                c.execute(
+                    "INSERT INTO people (name, contact_info) VALUES (?, ?)",
+                    (name, contact_info),
+                )
+                conn.commit()
+            except sqlite3.IntegrityError:
+                flash('Person already exists')
+        return redirect(url_for('people'))
+    with get_conn() as conn:
+        c = conn.cursor()
+        c.execute("SELECT id, name, contact_info FROM people ORDER BY name")
+        people = c.fetchall()
+    return render_template('people.html', people=people)
+
+
+@app.route('/people/<int:person_id>/delete', methods=['POST'])
+def delete_person(person_id):
+    with get_conn() as conn:
+        c = conn.cursor()
+        c.execute("SELECT COUNT(*) FROM loans WHERE person_id=?", (person_id,))
+        if c.fetchone()[0] > 0:
+            flash('Cannot delete person: existing loan records')
+        else:
+            c.execute("DELETE FROM people WHERE id=?", (person_id,))
+            conn.commit()
+    return redirect(url_for('people'))
+
+
+@app.route('/people/<int:person_id>')
+def person_detail(person_id):
+    with get_conn() as conn:
+        c = conn.cursor()
+        c.execute("SELECT name, contact_info FROM people WHERE id=?", (person_id,))
+        person = c.fetchone()
+        if not person:
+            return redirect(url_for('people'))
+        c.execute(
+            """
+            SELECT t.name AS tool_name, l.lent_on, l.returned_on
+            FROM loans l
+            JOIN tools t ON l.tool_id = t.id
+            WHERE l.person_id=?
+            ORDER BY l.lent_on DESC
+            """,
+            (person_id,),
+        )
+        loans = c.fetchall()
+    return render_template('person_loans.html', person=person, loans=loans)
+
+
+@app.route('/people/<int:person_id>/edit', methods=['GET', 'POST'])
+def edit_person(person_id):
+    with get_conn() as conn:
+        c = conn.cursor()
+        if request.method == 'POST':
+            name = request.form['name']
+            contact_info = request.form.get('contact_info', '')
+            try:
+                c.execute(
+                    "UPDATE people SET name=?, contact_info=? WHERE id=?",
+                    (name, contact_info, person_id),
+                )
+                conn.commit()
+                return redirect(url_for('people'))
+            except sqlite3.IntegrityError:
+                flash('Person already exists')
+        c.execute("SELECT id, name, contact_info FROM people WHERE id=?", (person_id,))
+        person = c.fetchone()
+        if not person:
+            return redirect(url_for('people'))
+    return render_template('edit_person.html', person=person)
 
 
 @app.route('/report')
@@ -181,6 +273,38 @@ def report():
         )
         rows = c.fetchall()
     return render_template('report.html', rows=rows)
+
+
+@app.route('/edit/<int:tool_id>', methods=['GET', 'POST'])
+def edit_tool(tool_id):
+    with get_conn() as conn:
+        c = conn.cursor()
+        if request.method == 'POST':
+            name = request.form['name']
+            description = request.form.get('description', '')
+            value_raw = request.form.get('value')
+            value = float(value_raw) if value_raw else 0
+            image_file = request.files.get('image')
+            if image_file and image_file.filename:
+                os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+                filename = secure_filename(image_file.filename)
+                save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                image_file.save(save_path)
+                image_path = os.path.join('images', filename)
+                c.execute(
+                    "UPDATE tools SET name=?, description=?, value=?, image_path=? WHERE id=?",
+                    (name, description, value, image_path, tool_id),
+                )
+            else:
+                c.execute(
+                    "UPDATE tools SET name=?, description=?, value=? WHERE id=?",
+                    (name, description, value, tool_id),
+                )
+            conn.commit()
+            return redirect(url_for('index'))
+        c.execute("SELECT * FROM tools WHERE id=?", (tool_id,))
+        tool = c.fetchone()
+    return render_template('edit_tool.html', tool=tool)
 
 
 if __name__ == '__main__':
