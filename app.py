@@ -1,7 +1,7 @@
 import os
 import sqlite3
 import datetime
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from werkzeug.utils import secure_filename
 
 DB_PATH = os.environ.get('TOOLTRACKER_DB', 'tooltracker.db')
@@ -66,6 +66,11 @@ init_db()
 
 @app.route('/')
 def index():
+    return render_template('index.html')
+
+
+@app.route('/api/tools')
+def api_tools():
     with get_conn() as conn:
         c = conn.cursor()
         c.execute(
@@ -77,8 +82,8 @@ def index():
             ORDER BY t.id
             """
         )
-        tools = c.fetchall()
-    return render_template('index.html', tools=tools)
+        tools = [dict(row) for row in c.fetchall()]
+    return jsonify(tools)
 
 
 @app.route('/add', methods=['GET', 'POST'])
