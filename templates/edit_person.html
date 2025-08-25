@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="mb-4">Edit Person</h1>
+<form method="post" class="row g-3">
+  <div class="col-md-6">
+    <label class="form-label">Name</label>
+    <input type="text" class="form-control" name="name" value="{{ person.name }}" required>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Contact Info</label>
+    <input type="text" class="form-control" name="contact_info" value="{{ person.contact_info }}">
+  </div>
+  <div class="col-12">
+    <button type="submit" class="btn btn-primary">Save</button>
+  </div>
+</form>
+{% endblock %}
