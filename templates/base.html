@@ -3,38 +3,118 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tool Tracker</title>
+  <title>{% block title %}Tool Tracker{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { 
+            brand: '#2563eb',
+            'brand-hover': '#1d4ed8',
+            'brand-light': '#dbeafe'
+          },
+          fontFamily: { inter: ['Inter', 'sans-serif'] },
+          spacing: {
+            '18': '4.5rem',
+            '88': '22rem'
+          }
+        }
+      }
+    }
+  </script>
 </head>
-<body>
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="{{ url_for('index') }}">Tool Tracker</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav">
-          <li class="nav-item"><a class="nav-link" href="{{ url_for('add_tool') }}">Add Tool</a></li>
-          <li class="nav-item"><a class="nav-link" href="{{ url_for('people') }}">People</a></li>
-          <li class="nav-item"><a class="nav-link" href="{{ url_for('report') }}">Report</a></li>
-        </ul>
+<body class="font-inter bg-gray-50 min-h-screen">
+  <!-- Header Navigation -->
+  <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center">
+          <a href="{{ url_for('index') }}" class="flex items-center space-x-2">
+            <div class="w-8 h-8 bg-brand rounded-lg flex items-center justify-center">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+              </svg>
+            </div>
+            <span class="text-xl font-bold text-gray-900">Tool Tracker</span>
+          </a>
+        </div>
+        
+        <nav class="hidden md:flex items-center space-x-8">
+          <a href="{{ url_for('index') }}" class="text-gray-600 hover:text-brand font-medium transition-colors">Tools</a>
+          <a href="{{ url_for('add_tool') }}" class="text-gray-600 hover:text-brand font-medium transition-colors">Add Tool</a>
+          <a href="{{ url_for('people') }}" class="text-gray-600 hover:text-brand font-medium transition-colors">People</a>
+          <a href="{{ url_for('report') }}" class="text-gray-600 hover:text-brand font-medium transition-colors">Report</a>
+        </nav>
+
+        <!-- Mobile menu button -->
+        <div class="md:hidden">
+          <button type="button" class="text-gray-600 hover:text-brand p-2" id="mobile-menu-button">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mobile menu -->
+      <div class="md:hidden hidden" id="mobile-menu">
+        <div class="px-2 pt-2 pb-3 space-y-1 border-t border-gray-200">
+          <a href="{{ url_for('index') }}" class="block px-3 py-2 text-gray-600 hover:text-brand font-medium">Tools</a>
+          <a href="{{ url_for('add_tool') }}" class="block px-3 py-2 text-gray-600 hover:text-brand font-medium">Add Tool</a>
+          <a href="{{ url_for('people') }}" class="block px-3 py-2 text-gray-600 hover:text-brand font-medium">People</a>
+          <a href="{{ url_for('report') }}" class="block px-3 py-2 text-gray-600 hover:text-brand font-medium">Report</a>
+        </div>
       </div>
     </div>
-  </nav>
-  <div class="container py-4">
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     {% with messages = get_flashed_messages() %}
       {% if messages %}
-        {% for m in messages %}
-        <div class="alert alert-info alert-dismissible fade show" role="alert">
-          {{ m }}
-          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        {% for message in messages %}
+        <div class="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
+          <div class="flex items-center">
+            <svg class="w-5 h-5 text-blue-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span class="text-blue-800">{{ message }}</span>
+          </div>
+          <button type="button" class="text-blue-500 hover:text-blue-700" onclick="this.parentElement.remove()">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
         </div>
         {% endfor %}
       {% endif %}
     {% endwith %}
+
     {% block content %}{% endblock %}
-  </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-gray-200 mt-auto">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div class="text-center text-gray-500 text-sm">
+        <p>&copy; 2024 Tool Tracker. Keep track of your tools and loans.</p>
+      </div>
+    </div>
+  </footer>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Mobile menu toggle
+    document.getElementById('mobile-menu-button').addEventListener('click', function() {
+      const mobileMenu = document.getElementById('mobile-menu');
+      mobileMenu.classList.toggle('hidden');
+    });
+  </script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 import os
 import sqlite3
 import datetime
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from werkzeug.utils import secure_filename
 
 DB_PATH = os.environ.get('TOOLTRACKER_DB', 'tooltracker.db')
@@ -66,6 +66,28 @@ init_db()
 
 @app.route('/')
 def index():
+    return render_template('index.html')
+
+
+@app.route('/api/tools', methods=['GET', 'POST'])
+def api_tools():
+    if request.method == 'POST':
+        data = request.get_json(force=True)
+        name = data.get('name', '').strip()
+        if not name:
+            return jsonify({'error': 'name required'}), 400
+        with get_conn() as conn:
+            c = conn.cursor()
+            c.execute(
+                "INSERT INTO tools (name, description, value, image_path) VALUES (?, '', 0, NULL)",
+                (name,),
+            )
+            tool_id = c.lastrowid
+            conn.commit()
+            c.execute("SELECT id, name FROM tools WHERE id=?", (tool_id,))
+            tool = dict(c.fetchone())
+        return jsonify(tool), 201
+
     with get_conn() as conn:
         c = conn.cursor()
         c.execute(
@@ -77,8 +99,8 @@ def index():
             ORDER BY t.id
             """
         )
-        tools = c.fetchall()
-    return render_template('index.html', tools=tools)
+        tools = [dict(row) for row in c.fetchall()]
+    return jsonify(tools)
 
 
 @app.route('/add', methods=['GET', 'POST'])
@@ -151,7 +173,7 @@ def lend_tool(tool_id):
     with get_conn() as conn:
         c = conn.cursor()
         c.execute("SELECT id, name FROM people ORDER BY name")
-        people = c.fetchall()
+        people = [dict(row) for row in c.fetchall()]
         if not people:
             flash('No people available. Add a person first.')
             return redirect(url_for('people'))
@@ -264,10 +286,10 @@ def report():
         c = conn.cursor()
         c.execute(
             """
-            SELECT p.name, COUNT(l.id) AS count
+            SELECT p.id AS person_id, p.name, COUNT(l.id) AS count
             FROM people p
             LEFT JOIN loans l ON p.id = l.person_id AND l.returned_on IS NULL
-            GROUP BY p.id
+            GROUP BY p.id, p.name
             ORDER BY p.name
             """
         )
