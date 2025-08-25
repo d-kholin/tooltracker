@@ -1,11 +1,25 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>Add Tool</h1>
-<form method="post" enctype="multipart/form-data">
-  <label>Name: <input type="text" name="name" required></label><br>
-  <label>Description: <input type="text" name="description"></label><br>
-  <label>Value: <input type="number" step="0.01" name="value"></label><br>
-  <label>Image: <input type="file" name="image"></label><br>
-  <button type="submit">Add</button>
+<h1 class="mb-4">Add Tool</h1>
+<form method="post" enctype="multipart/form-data" class="row g-3">
+  <div class="col-12">
+    <label class="form-label">Name</label>
+    <input type="text" class="form-control" name="name" required>
+  </div>
+  <div class="col-12">
+    <label class="form-label">Description</label>
+    <input type="text" class="form-control" name="description">
+  </div>
+  <div class="col-12">
+    <label class="form-label">Value</label>
+    <input type="number" step="0.01" class="form-control" name="value">
+  </div>
+  <div class="col-12">
+    <label class="form-label">Image</label>
+    <input type="file" class="form-control" name="image">
+  </div>
+  <div class="col-12">
+    <button type="submit" class="btn btn-primary">Add</button>
+  </div>
 </form>
 {% endblock %}
