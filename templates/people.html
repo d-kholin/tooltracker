@@ -1,34 +1,97 @@
 {% extends 'base.html' %}
+{% block title %}People - Tool Tracker{% endblock %}
+
 {% block content %}
-<h1 class="mb-4">People</h1>
-<form method="post" class="row g-3 mb-4">
-  <div class="col-md-4">
-    <input type="text" class="form-control" name="name" placeholder="Name" required>
+<div class="mb-6">
+  <h1 class="text-3xl font-bold text-gray-900">People</h1>
+  <p class="text-gray-600 mt-2">Manage the people who borrow your tools.</p>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+  <h2 class="text-lg font-semibold text-gray-900 mb-4">Add New Person</h2>
+  <form method="post" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+    <div>
+      <label class="form-label">Name *</label>
+      <input type="text" class="form-control w-full" name="name" placeholder="Full name" required>
+    </div>
+    <div>
+      <label class="form-label">Contact Info</label>
+      <input type="text" class="form-control w-full" name="contact_info" placeholder="Phone, email, or address">
+    </div>
+    <div>
+      <button type="submit" class="btn btn-primary w-full md:w-auto">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+        </svg>
+        Add Person
+      </button>
+    </div>
+  </form>
+</div>
+
+{% if people %}
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900">People List</h2>
   </div>
-  <div class="col-md-4">
-    <input type="text" class="form-control" name="contact_info" placeholder="Contact info">
+  
+  <div class="table-responsive">
+    <table class="table w-full">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Contact Info</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for p in people %}
+        <tr class="hover:bg-gray-50">
+          <td>
+            <a href="{{ url_for('person_detail', person_id=p.id) }}" class="font-medium text-brand hover:text-brand-hover transition-colors">
+              {{ p.name }}
+            </a>
+          </td>
+          <td class="text-gray-600">
+            {% if p.contact_info %}
+              {{ p.contact_info }}
+            {% else %}
+              <span class="text-gray-400">No contact info</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="flex items-center gap-2">
+              <a href="{{ url_for('edit_person', person_id=p.id) }}" class="btn btn-sm btn-secondary">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+                Edit
+              </a>
+              <form action="{{ url_for('delete_person', person_id=p.id) }}" method="post" class="inline">
+                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete {{ p.name }}? This action cannot be undone.')">
+                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                  </svg>
+                  Delete
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
   </div>
-  <div class="col-auto">
-    <button type="submit" class="btn btn-primary mb-3">Add Person</button>
+</div>
+{% else %}
+<div class="text-center py-12">
+  <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+    </svg>
   </div>
-</form>
-<table class="table table-striped">
-  <thead>
-    <tr><th>Name</th><th>Contact Info</th><th>Actions</th></tr>
-  </thead>
-  <tbody>
-  {% for p in people %}
-    <tr>
-      <td><a href="{{ url_for('person_detail', person_id=p.id) }}">{{ p.name }}</a></td>
-      <td>{{ p.contact_info }}</td>
-      <td>
-        <a href="{{ url_for('edit_person', person_id=p.id) }}" class="btn btn-sm btn-secondary">Edit</a>
-        <form action="{{ url_for('delete_person', person_id=p.id) }}" method="post" class="d-inline">
-          <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-        </form>
-      </td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
+  <h3 class="text-lg font-medium text-gray-900 mb-2">No people yet</h3>
+  <p class="text-gray-500">Start adding people to track who borrows your tools.</p>
+</div>
+{% endif %}
 {% endblock %}

@@ -286,10 +286,10 @@ def report():
         c = conn.cursor()
         c.execute(
             """
-            SELECT p.name, COUNT(l.id) AS count
+            SELECT p.id AS person_id, p.name, COUNT(l.id) AS count
             FROM people p
             LEFT JOIN loans l ON p.id = l.person_id AND l.returned_on IS NULL
-            GROUP BY p.id
+            GROUP BY p.id, p.name
             ORDER BY p.name
             """
         )

@@ -1,17 +1,41 @@
 {% extends 'base.html' %}
+{% block title %}Edit Person - Tool Tracker{% endblock %}
+
 {% block content %}
-<h1 class="mb-4">Edit Person</h1>
-<form method="post" class="row g-3">
-  <div class="col-md-6">
-    <label class="form-label">Name</label>
-    <input type="text" class="form-control" name="name" value="{{ person.name }}" required>
+<div class="max-w-2xl mx-auto">
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-900">Edit Person</h1>
+    <p class="text-gray-600 mt-2">Update the details for "{{ person.name }}".</p>
   </div>
-  <div class="col-md-6">
-    <label class="form-label">Contact Info</label>
-    <input type="text" class="form-control" name="contact_info" value="{{ person.contact_info }}">
+
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <form method="post" class="space-y-6">
+      <div>
+        <label class="form-label">Name *</label>
+        <input type="text" class="form-control w-full" name="name" value="{{ person.name }}" required>
+      </div>
+      
+      <div>
+        <label class="form-label">Contact Info</label>
+        <input type="text" class="form-control w-full" name="contact_info" value="{{ person.contact_info or '' }}" placeholder="Phone, email, or address">
+        <p class="text-sm text-gray-500 mt-1">Optional: Add contact information for easy communication</p>
+      </div>
+      
+      <div class="flex items-center justify-between pt-4">
+        <a href="/people" class="btn btn-secondary">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+          </svg>
+          Cancel
+        </a>
+        <button type="submit" class="btn btn-primary">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          Save Changes
+        </button>
+      </div>
+    </form>
   </div>
-  <div class="col-12">
-    <button type="submit" class="btn btn-primary">Save</button>
-  </div>
-</form>
+</div>
 {% endblock %}
