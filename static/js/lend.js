@@ -7,7 +7,7 @@ const addName = document.getElementById('new-person-name');
 const addContact = document.getElementById('new-person-contact');
 const addSubmit = document.getElementById('add-person-submit');
 const form = document.querySelector('form');
-const people = (window.peopleData || []).map(p => ({ id: p[0], name: p[1] }));
+const people = window.peopleData || [];
 
 // Search and select existing people
 if (searchInput) {
