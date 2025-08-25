@@ -1,3 +1,4 @@
+
 const searchInput = document.getElementById('person-search');
 const results = document.getElementById('person-results');
 const personId = document.getElementById('person-id');
@@ -70,4 +71,3 @@ if (form && personId) {
     }
   });
 }
-

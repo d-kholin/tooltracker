@@ -5,6 +5,7 @@
   <div class="col-12">
     <label class="form-label">Person</label>
     <input type="text" id="person-search" class="form-control mb-2" placeholder="Search people">
+
     <div id="person-results" class="list-group mb-2 d-none"></div>
     <button type="button" id="show-add-person" class="btn btn-link p-0">Add new person</button>
     <div id="add-person-form" class="row g-2 mt-2 d-none">
@@ -19,6 +20,7 @@
       </div>
     </div>
     <input type="hidden" name="person_id" id="person-id" required>
+
   </div>
   <div class="col-12">
     <button type="submit" class="btn btn-primary">Lend</button>
@@ -27,5 +29,6 @@
 <script>
   window.peopleData = {{ people|tojson }};
 </script>
+
 <script src="{{ url_for('static', filename='js/lend.js') }}"></script>
 {% endblock %}
