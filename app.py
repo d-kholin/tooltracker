@@ -69,8 +69,25 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/api/tools')
+@app.route('/api/tools', methods=['GET', 'POST'])
 def api_tools():
+    if request.method == 'POST':
+        data = request.get_json(force=True)
+        name = data.get('name', '').strip()
+        if not name:
+            return jsonify({'error': 'name required'}), 400
+        with get_conn() as conn:
+            c = conn.cursor()
+            c.execute(
+                "INSERT INTO tools (name, description, value, image_path) VALUES (?, '', 0, NULL)",
+                (name,),
+            )
+            tool_id = c.lastrowid
+            conn.commit()
+            c.execute("SELECT id, name FROM tools WHERE id=?", (tool_id,))
+            tool = dict(c.fetchone())
+        return jsonify(tool), 201
+
     with get_conn() as conn:
         c = conn.cursor()
         c.execute(
