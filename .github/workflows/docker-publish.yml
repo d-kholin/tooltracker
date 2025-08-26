@@ -2,7 +2,7 @@ name: Build and Publish Docker Container
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "dev" ]
     tags: [ 'v*.*.*' ]
   pull_request:
     branches: [ "main", "master" ]
@@ -49,6 +49,7 @@ jobs:
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
           type=ref,event=branch,enable={{is_default_branch}}
+          type=ref,event=branch,prefix=dev-,enable={{is_default_branch==false}}
         labels: |
           org.opencontainers.image.title=tooltracker
           org.opencontainers.image.description=A simple web app to track my tools, and where I've lent them out!
@@ -63,6 +64,7 @@ jobs:
         echo "Generated tags: ${{ steps.meta.outputs.tags }}"
         echo "Generated labels: ${{ steps.meta.outputs.labels }}"
         echo "Is default branch: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}"
+        echo "Current branch: ${{ github.ref_name }}"
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
