@@ -13,9 +13,9 @@ const ToolCard = ({ tool }) => {
   };
   
   const handleLendClick = (e) => {
-    e.preventDefault();
     e.stopPropagation();
-    console.log('Lend click - allowing navigation');
+    console.log('Lend click - allowing navigation to lend page');
+    // Don't prevent default - let the link navigate naturally
   };
   
   const handleReturnClick = (e) => {
