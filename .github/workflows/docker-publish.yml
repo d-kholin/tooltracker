@@ -42,7 +42,16 @@ jobs:
           type=ref,event=pr
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
-          type=sha,prefix={{branch}}-
+          type=sha,prefix=sha-
+          type=raw,value=latest
+        labels: |
+          org.opencontainers.image.title=tooltracker
+          org.opencontainers.image.description=A simple web app to track my tools, and where I've lent them out!
+          org.opencontainers.image.url=https://github.com/${{ github.repository }}
+          org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          org.opencontainers.image.licenses=
+          org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+          org.opencontainers.image.revision=${{ github.sha }}
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v5

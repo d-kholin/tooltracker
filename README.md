@@ -2,6 +2,8 @@
 
 A modern web application for tracking tools and equipment lending. Built with Flask, React, and a clean, consistent design system.
 
+![Homepage Screenshot](pub/homepage.png)
+
 ## Features
 
 - **Tool Management**: Add, edit, and track tools with descriptions, values, and images
@@ -10,37 +12,6 @@ A modern web application for tracking tools and equipment lending. Built with Fl
 - **Reporting**: View current loans and lending history
 - **Responsive Design**: Works seamlessly on desktop and mobile devices
 
-## UI/UX Improvements
-
-### Design System
-- **Consistent Color Palette**: Uses a cohesive blue-based color scheme with proper contrast
-- **Typography**: Inter font family for excellent readability
-- **Spacing**: Consistent spacing using Tailwind CSS spacing scale
-- **Shadows & Borders**: Subtle shadows and borders for depth and hierarchy
-
-### Navigation
-- **Single Navigation**: Removed redundant bottom navigation, keeping only the top header
-- **Mobile-First**: Responsive navigation with mobile menu toggle
-- **Clear Hierarchy**: Logical grouping of navigation items
-
-### Forms & Controls
-- **Consistent Styling**: All forms use the same design patterns
-- **Better Labels**: Clear, descriptive labels with required field indicators
-- **Visual Feedback**: Hover states, focus rings, and loading states
-- **Error Handling**: Clear error messages and validation feedback
-
-### Cards & Tables
-- **Enhanced Tool Cards**: Rich information display with status indicators
-- **Interactive Elements**: Hover effects and smooth transitions
-- **Status Badges**: Color-coded status indicators for tool availability
-- **Action Buttons**: Consistent button styling with icons
-
-### User Experience
-- **Loading States**: Spinner animations for better perceived performance
-- **Empty States**: Helpful messages when no data is available
-- **Confirmation Dialogs**: Safety confirmations for destructive actions
-- **Success Feedback**: Visual confirmation for completed actions
-
 ## Technology Stack
 
 - **Backend**: Flask (Python)
@@ -48,6 +19,8 @@ A modern web application for tracking tools and equipment lending. Built with Fl
 - **Styling**: Custom CSS with Tailwind utilities
 - **Icons**: Heroicons (SVG)
 - **Fonts**: Inter (Google Fonts)
+- **Database**: SQLite
+- **Containerization**: Docker with GitHub Container Registry (GHCR)
 
 ## Getting Started
 
@@ -61,59 +34,84 @@ A modern web application for tracking tools and equipment lending. Built with Fl
 
 2. **Run with Docker Compose:**
    ```bash
-   docker-compose up --build
+   docker-compose up -d
    ```
 
 3. **Access the application:**
    Open your browser to `http://localhost:5000`
 
-**Note**: Data is automatically stored in Docker volumes (`tooltracker_data` and `tooltracker_static`) for persistence across container restarts.
+### Option 2: Direct Docker
 
-### Option 2: Local Development
-
-1. **Install dependencies:**
+1. **Pull the pre-built image:**
    ```bash
-   pip install -r requirements.txt
+   docker pull ghcr.io/d-kholin/tooltracker/tooltracker:latest
    ```
 
-2. **Run the application:**
+2. **Run the container:**
    ```bash
-   python app.py
+   docker run -d -p 5000:5000 -v tooltracker_data:/app ghcr.io/d-kholin/tooltracker/tooltracker:latest
    ```
 
-3. **Open your browser to `http://localhost:5000`**
+## File Structure
 
-## Docker Commands
-
-### Start the application:
-```bash
-docker-compose up
+```
+tooltracker/
+├── app.py                 # Flask application
+├── requirements.txt       # Python dependencies
+├── Dockerfile            # Docker configuration
+├── docker-compose.yml    # Docker Compose configuration
+├── .dockerignore         # Docker build exclusions
+├── .github/
+│   └── workflows/
+│       └── docker-publish.yml  # GitHub Actions CI/CD
+├── docs/
+│   └── UX_UI_Improvements.md   # Design documentation
+├── frontend/
+│   └── components/       # React components
+│       ├── BottomNav.jsx
+│       ├── QuickAddTask.jsx
+│       └── TaskCard.jsx
+├── static/
+│   ├── css/
+│   │   └── style.css     # Custom styles and design system
+│   ├── js/
+│   │   ├── app.js        # Main React application
+│   │   └── lend.js       # Lending functionality
+│   └── images/           # Tool images (persisted in volumes)
+└── templates/
+    ├── base.html         # Base template with navigation
+    ├── index.html        # Main tools page
+    ├── add_tool.html     # Add tool form
+    ├── edit_tool.html    # Edit tool form
+    ├── people.html       # People management
+    ├── edit_person.html  # Edit person form
+    ├── lend_tool.html    # Lend tool form
+    └── report.html       # Lending report
 ```
 
-### Start in background:
-```bash
-docker-compose up -d
+## Docker Volumes and Data Persistence
+
+The application uses Docker volumes to ensure data persistence across container restarts and deployments:
+
+### Volume Structure
+```
+tooltracker_data:/app    # Main application data
+├── tooltracker.db       # SQLite database
+├── static/images/       # Uploaded tool images
+└── logs/                # Application logs (if generated)
 ```
 
-### Stop the application:
-```bash
-docker-compose down
-```
+### Data Persistence Features
+- **SQLite Database**: All tool, people, and loan data is stored persistently
+- **Uploaded Images**: Tool images are preserved across deployments
+- **Automatic Creation**: Volumes are created automatically on first run
+- **CI/CD Ready**: Works seamlessly in production environments
 
-### View logs:
-```bash
-docker-compose logs -f
-```
+### Volume Management Commands
 
-### Rebuild and restart:
 ```bash
-docker-compose up --build
-```
-
-### Manage volumes:
-```bash
-# List volumes
-docker volume ls
+# View volume information
+docker volume ls | grep tooltracker
 
 # Inspect volume details
 docker volume inspect tooltracker_tooltracker_data
@@ -128,35 +126,27 @@ docker run --rm -v tooltracker_tooltracker_data:/data -v $(pwd):/backup alpine t
 docker-compose down -v
 ```
 
-## File Structure
+## CI/CD and Deployment
 
-```
-tooltracker/
-├── app.py                 # Flask application
-├── requirements.txt       # Python dependencies
-├── Dockerfile            # Docker configuration
-├── docker-compose.yml    # Docker Compose configuration
-├── .dockerignore         # Docker build exclusions
-├── static/
-│   ├── css/
-│   │   └── style.css     # Custom styles and design system
-│   ├── js/
-│   │   ├── app.js        # Main React application
-│   │   └── lend.js       # Lending functionality
-│   └── images/           # Tool images (development only)
-└── templates/
-    ├── base.html         # Base template with navigation
-    ├── index.html        # Main tools page
-    ├── add_tool.html     # Add tool form
-    ├── edit_tool.html    # Edit tool form
-    ├── people.html       # People management
-    ├── edit_person.html  # Edit person form
-    ├── lend_tool.html    # Lend tool form
-    └── report.html       # Lending report
+### GitHub Actions Workflow
+The repository includes an automated CI/CD pipeline that:
+- Builds Docker images on push to main/master branches
+- Publishes to GitHub Container Registry (GHCR)
+- Automatically tags images with semantic versions
+- Supports both development and production deployments
 
-# Docker Volumes (created automatically)
-tooltracker_tooltracker_data/    # SQLite database and uploaded images
-tooltracker_tooltracker_static/  # Static files in production
+### Image Tags
+- `latest` - Most recent build from main/master
+- `v1.0.0` - Semantic version tags
+- `main-abc1234` - Branch-specific builds with commit SHA
+
+### Production Deployment
+```bash
+# Pull latest production image
+docker pull ghcr.io/d-kholin/tooltracker/tooltracker:latest
+
+# Run with persistent volumes
+docker run -d -p 5000:5000 -v tooltracker_data:/app ghcr.io/d-kholin/tooltracker/tooltracker:latest
 ```
 
 ## Design Principles
