@@ -3,30 +3,40 @@
 
 {% block content %}
 <div class="mb-6">
-  <h1 class="text-3xl font-bold text-gray-900">People</h1>
-  <p class="text-gray-600 mt-2">Manage the people who borrow your tools.</p>
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900">People</h1>
+      <p class="text-gray-600 mt-2">Manage the people who borrow your tools.</p>
+    </div>
+    <a href="{{ url_for('add_person') }}" class="btn btn-primary">
+      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+      </svg>
+      Add Person
+    </a>
+  </div>
 </div>
 
-<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-  <h2 class="text-lg font-semibold text-gray-900 mb-4">Add New Person</h2>
-  <form method="post" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-    <div>
-      <label class="form-label">Name *</label>
-      <input type="text" class="form-control w-full" name="name" placeholder="Full name" required>
+<!-- Search Bar -->
+<div class="mb-6">
+  <div class="relative">
+    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+      <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+      </svg>
     </div>
-    <div>
-      <label class="form-label">Contact Info</label>
-      <input type="text" class="form-control w-full" name="contact_info" placeholder="Phone, email, or address">
-    </div>
-    <div>
-      <button type="submit" class="btn btn-primary w-full md:w-auto">
-        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-        </svg>
-        Add Person
-      </button>
-    </div>
-  </form>
+    <input
+      type="text"
+      id="searchInput"
+      placeholder="Search people by name or contact info..."
+      class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-brand focus:border-brand sm:text-sm"
+    >
+  </div>
+</div>
+
+<!-- Results count -->
+<div id="resultsCount" class="text-sm text-gray-600 mb-4 hidden">
+  Found <span id="count">0</span> person<span id="countPlural">s</span> matching "<span id="searchTerm"></span>"
 </div>
 
 {% if people %}
@@ -44,9 +54,9 @@
           <th>Actions</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="peopleTableBody">
       {% for p in people %}
-        <tr class="hover:bg-gray-50">
+        <tr class="hover:bg-gray-50" data-name="{{ p.name.lower() }}" data-contact="{{ (p.contact_info or '').lower() }}">
           <td>
             <a href="{{ url_for('person_detail', person_id=p.id) }}" class="font-medium text-brand hover:text-brand-hover transition-colors">
               {{ p.name }}
@@ -75,6 +85,18 @@
     </table>
   </div>
 </div>
+
+<!-- Empty state for search results -->
+<div id="noSearchResults" class="text-center py-12 hidden">
+  <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+    </svg>
+  </div>
+  <h3 class="text-lg font-medium text-gray-900 mb-2">No people found</h3>
+  <p class="text-gray-500">Try adjusting your search terms or browse all people.</p>
+</div>
+
 {% else %}
 <div class="text-center py-12">
   <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -86,4 +108,60 @@
   <p class="text-gray-500">Start adding people to track who borrows your tools.</p>
 </div>
 {% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const searchInput = document.getElementById('searchInput');
+  const peopleTableBody = document.getElementById('peopleTableBody');
+  const resultsCount = document.getElementById('resultsCount');
+  const count = document.getElementById('count');
+  const countPlural = document.getElementById('countPlural');
+  const searchTerm = document.getElementById('searchTerm');
+  const noSearchResults = document.getElementById('noSearchResults');
+  
+  if (!peopleTableBody) return;
+  
+  const rows = peopleTableBody.querySelectorAll('tr');
+  
+  function performSearch() {
+    const searchValue = searchInput.value.toLowerCase().trim();
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+      const name = row.getAttribute('data-name') || '';
+      const contact = row.getAttribute('data-contact') || '';
+      
+      if (searchValue === '' || name.includes(searchValue) || contact.includes(searchValue)) {
+        row.style.display = '';
+        visibleCount++;
+      } else {
+        row.style.display = 'none';
+      }
+    });
+    
+    // Show/hide results count
+    if (searchValue) {
+      resultsCount.classList.remove('hidden');
+      count.textContent = visibleCount;
+      countPlural.textContent = visibleCount !== 1 ? 's' : '';
+      searchTerm.textContent = searchInput.value;
+      
+      // Show no results message if needed
+      if (visibleCount === 0) {
+        noSearchResults.classList.remove('hidden');
+        peopleTableBody.parentElement.parentElement.classList.add('hidden');
+      } else {
+        noSearchResults.classList.add('hidden');
+        peopleTableBody.parentElement.parentElement.classList.remove('hidden');
+      }
+    } else {
+      resultsCount.classList.add('hidden');
+      noSearchResults.classList.add('hidden');
+      peopleTableBody.parentElement.parentElement.classList.remove('hidden');
+    }
+  }
+  
+  searchInput.addEventListener('input', performSearch);
+});
+</script>
 {% endblock %}

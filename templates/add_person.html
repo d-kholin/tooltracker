@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}Add Person - Tool Tracker{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-900">Add New Person</h1>
+    <p class="text-gray-600 mt-2">Add someone who can borrow your tools.</p>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <form method="post" class="space-y-6">
+      <div>
+        <label class="form-label">Name *</label>
+        <input type="text" class="form-control w-full" name="name" placeholder="Full name" required>
+      </div>
+      
+      <div>
+        <label class="form-label">Contact Info</label>
+        <input type="text" class="form-control w-full" name="contact_info" placeholder="Phone, email, or address">
+        <p class="text-sm text-gray-500 mt-1">Optional: Add phone number, email, or address for easy contact.</p>
+      </div>
+      
+      <div class="flex items-center gap-4 pt-4">
+        <button type="submit" class="btn btn-primary">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+          </svg>
+          Add Person
+        </button>
+        <a href="{{ url_for('people') }}" class="btn btn-secondary">
+          Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
