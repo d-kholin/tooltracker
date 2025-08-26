@@ -4,9 +4,16 @@ import datetime
 import uuid
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from werkzeug.utils import secure_filename
+from PIL import Image
+import io
 
 DB_PATH = os.environ.get('TOOLTRACKER_DB', 'tooltracker.db')
 UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join('static', 'images'))
+
+# Image optimization constants
+MAX_IMAGE_DIMENSION = 1024  # Maximum dimension for image resizing
+JPEG_QUALITY = 85  # JPEG compression quality
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB maximum file size
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -35,6 +42,81 @@ def generate_unique_filename(original_filename):
     new_filename = f"tool_{timestamp}_{unique_id}{ext}"
     
     return new_filename
+
+
+def optimize_image(image_file):
+    """
+    Optimize uploaded image by resizing and compressing
+    Returns the optimized image as bytes and the file extension
+    """
+    try:
+        # Open the image
+        img = Image.open(image_file)
+        
+        # Convert to RGB if necessary (for JPEG compatibility)
+        if img.mode in ('RGBA', 'LA', 'P'):
+            img = img.convert('RGB')
+        
+        # Get original dimensions
+        original_width, original_height = img.size
+        
+        # Calculate new dimensions while maintaining aspect ratio
+        if original_width > MAX_IMAGE_DIMENSION or original_height > MAX_IMAGE_DIMENSION:
+            if original_width > original_height:
+                new_width = MAX_IMAGE_DIMENSION
+                new_height = int(original_height * (MAX_IMAGE_DIMENSION / original_width))
+            else:
+                new_height = MAX_IMAGE_DIMENSION
+                new_width = int(original_width * (MAX_IMAGE_DIMENSION / original_height))
+            
+            # Resize the image
+            img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            print(f"Resized image from {original_width}x{original_height} to {new_width}x{new_height}")
+        
+        # Save optimized image to bytes
+        output = io.BytesIO()
+        
+        # Determine output format and save with optimization
+        if img.format in ('JPEG', 'JPG') or img.mode == 'RGB':
+            # Save as JPEG with compression
+            img.save(output, format='JPEG', quality=JPEG_QUALITY, optimize=True)
+            extension = '.jpg'
+        else:
+            # Save as PNG for transparency support
+            img.save(output, format='PNG', optimize=True)
+            extension = '.png'
+        
+        output.seek(0)
+        return output, extension
+        
+    except Exception as e:
+        print(f"Error optimizing image: {e}")
+        return None, None
+
+
+def validate_image_file(image_file):
+    """
+    Validate image file size and type
+    Returns (is_valid, error_message)
+    """
+    if not image_file or not image_file.filename:
+        return False, "No image file provided"
+    
+    # Check file size
+    image_file.seek(0, 2)  # Seek to end
+    file_size = image_file.tell()
+    image_file.seek(0)  # Reset to beginning
+    
+    if file_size > MAX_FILE_SIZE:
+        return False, f"Image file too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB"
+    
+    # Check file extension
+    _, ext = os.path.splitext(image_file.filename)
+    allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
+    if ext.lower() not in allowed_extensions:
+        return False, "Invalid image format. Allowed formats: JPG, PNG, GIF, BMP, WebP"
+    
+    return True, None
 
 
 def get_conn():
@@ -153,15 +235,33 @@ def add_tool():
         image_file = request.files.get('image')
         image_path = None
         if image_file and image_file.filename:
+            # Validate image file
+            is_valid, error_message = validate_image_file(image_file)
+            if not is_valid:
+                flash(error_message)
+                return render_template('add_tool.html')
+            
             try:
                 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-                # Generate unique filename to prevent conflicts
-                unique_filename = generate_unique_filename(image_file.filename)
+                
+                # Optimize the image
+                optimized_image, extension = optimize_image(image_file)
+                if not optimized_image:
+                    flash('Error processing image. Please try again.')
+                    return render_template('add_tool.html')
+                
+                # Generate unique filename with correct extension
+                unique_filename = generate_unique_filename(f"image{extension}")
                 save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-                image_file.save(save_path)
-                # Store relative path for database, but ensure it works with our new structure
+                
+                # Save the optimized image
+                with open(save_path, 'wb') as f:
+                    f.write(optimized_image.getvalue())
+                
+                # Store relative path for database
                 image_path = os.path.join('images', unique_filename)
-                print(f"Image uploaded successfully: {unique_filename}")
+                print(f"Optimized image uploaded successfully: {unique_filename}")
+                
             except Exception as e:
                 print(f"Error uploading image: {e}")
                 image_path = None
@@ -429,6 +529,12 @@ def edit_tool(tool_id):
             value = float(value_raw) if value_raw else 0
             image_file = request.files.get('image')
             if image_file and image_file.filename:
+                # Validate image file
+                is_valid, error_message = validate_image_file(image_file)
+                if not is_valid:
+                    flash(error_message)
+                    return redirect(url_for('edit_tool', tool_id=tool_id))
+                
                 try:
                     # Get the old image path before updating
                     c.execute("SELECT image_path FROM tools WHERE id=?", (tool_id,))
@@ -436,13 +542,24 @@ def edit_tool(tool_id):
                     old_image_path = old_tool['image_path'] if old_tool else None
                     
                     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-                    # Generate unique filename to prevent conflicts
-                    unique_filename = generate_unique_filename(image_file.filename)
+                    
+                    # Optimize the image
+                    optimized_image, extension = optimize_image(image_file)
+                    if not optimized_image:
+                        flash('Error processing image. Please try again.')
+                        return redirect(url_for('edit_tool', tool_id=tool_id))
+                    
+                    # Generate unique filename with correct extension
+                    unique_filename = generate_unique_filename(f"image{extension}")
                     save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-                    image_file.save(save_path)
-                    # Store relative path for database, but ensure it works with our new structure
+                    
+                    # Save the optimized image
+                    with open(save_path, 'wb') as f:
+                        f.write(optimized_image.getvalue())
+                    
+                    # Store relative path for database
                     image_path = os.path.join('images', unique_filename)
-                    print(f"Image updated successfully: {unique_filename}")
+                    print(f"Optimized image updated successfully: {unique_filename}")
                     
                     # Delete the old image if it exists
                     if old_image_path:
