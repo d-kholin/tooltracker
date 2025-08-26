@@ -1,12 +1,87 @@
 const ToolCard = ({ tool }) => {
-  const navigateToEdit = () => {
-    window.location = `/edit/${tool.id}`;
+  console.log('🎯 ToolCard rendering for tool:', tool.id, tool.name);
+  const navigateToDetail = () => {
+    console.log('Navigating to tool detail:', tool.id);
+    window.location.href = `/tool/${tool.id}`;
+  };
+  
+  const navigateToEdit = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Navigating to edit:', tool.id);
+    window.location.href = `/edit/${tool.id}`;
+  };
+  
+  const handleLendClick = (e) => {
+    e.stopPropagation();
+    console.log('Lend click - allowing navigation to lend page');
+    // Don't prevent default - let the link navigate naturally
+  };
+  
+  const handleReturnClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Return click - allowing form submission');
+  };
+  
+  const handleEditClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Edit click - navigating to edit');
+    navigateToEdit(e);
+  };
+  
+  const handleHistoryClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('History click - navigating to detail');
+    navigateToDetail();
+  };
+  
+  const handleCardClick = (e) => {
+    console.log('=== CARD CLICK DEBUG ===');
+    console.log('Event target:', e.target);
+    console.log('Target tagName:', e.target.tagName);
+    console.log('Target className:', e.target.className);
+    console.log('Target id:', e.target.id);
+    console.log('Target textContent:', e.target.textContent ? e.target.textContent.substring(0, 50) : '');
+    
+    // Check if we clicked on an action element - be more specific
+    const target = e.target;
+    
+    // Check if the target OR any of its ancestors is an action element
+    const isActionElement = target.closest('[data-action]') || 
+                           target.closest('button') || 
+                           target.closest('form') || 
+                           target.closest('a') ||
+                           target.closest('input') ||
+                           target.closest('select') ||
+                           target.closest('textarea');
+    
+    console.log('Is action element?', !!isActionElement);
+    console.log('Target closest data-action:', target.closest('[data-action]'));
+    console.log('Target closest button:', target.closest('button'));
+    console.log('Target closest form:', target.closest('form'));
+    console.log('Target closest a:', target.closest('a'));
+    
+    if (!isActionElement) {
+      console.log('✅ Content area clicked, navigating to detail');
+      navigateToDetail();
+    } else {
+      console.log('❌ Action element clicked, not navigating');
+      console.log('Action element type:', isActionElement.tagName);
+      console.log('Action element class:', isActionElement.className);
+    }
+    console.log('=== END DEBUG ===');
   };
   
   return (
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all duration-200 cursor-pointer group">
+    <div 
+      class="tool-card bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all duration-200 cursor-pointer group" 
+      onClick={handleCardClick}
+    >
       <div class="flex items-start justify-between">
-        <div class="flex-1" onClick={navigateToEdit}>
+        <div class="flex-1">
           <div class="flex items-start gap-4 mb-3">
             {tool.image_path ? (
               <div class="flex-shrink-0">
@@ -19,7 +94,7 @@ const ToolCard = ({ tool }) => {
             ) : (
               <div class="w-16 h-16 bg-brand-light rounded-lg flex items-center justify-center group-hover:bg-brand transition-colors flex-shrink-0">
                 <svg class="w-8 h-8 text-brand group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
                 </svg>
               </div>
             )}
@@ -45,16 +120,17 @@ const ToolCard = ({ tool }) => {
           </div>
         </div>
         
-        <div class="flex flex-col gap-2 ml-4">
+        <div class="action-buttons flex flex-col gap-2 ml-4">
           {tool.borrower ? (
             <form
               method="POST"
               action={`/return/${tool.id}`}
-              onClick={e => e.stopPropagation()}
+              onClick={handleReturnClick}
+              data-action="return"
             >
-              <button type="submit" class="btn btn-sm btn-secondary">
+              <button type="submit" class="btn btn-sm btn-secondary" data-action="return">
                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                 </svg>
                 Return
               </button>
@@ -63,23 +139,36 @@ const ToolCard = ({ tool }) => {
             <a
               href={`/lend/${tool.id}`}
               class="btn btn-sm btn-primary"
-              onClick={e => e.stopPropagation()}
+              onClick={handleLendClick}
+              data-action="lend"
             >
               <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
               </svg>
               Lend
             </a>
           )}
           
           <button
-            onClick={navigateToEdit}
+            onClick={handleEditClick}
             class="btn btn-sm btn-secondary"
+            data-action="edit"
           >
             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
             </svg>
             Edit
+          </button>
+          
+          <button
+            onClick={handleHistoryClick}
+            class="btn btn-sm btn-secondary"
+            data-action="history"
+          >
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            History
           </button>
         </div>
       </div>
@@ -91,21 +180,22 @@ const EmptyState = () => (
   <div class="text-center py-12">
     <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
       <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
       </svg>
     </div>
     <h3 class="text-lg font-medium text-gray-900 mb-2">No tools yet</h3>
     <p class="text-gray-500 mb-4">Get started by adding your first tool to track.</p>
-    <a href="/add" class="btn btn-primary">
-      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-      </svg>
-      Add Your First Tool
-    </a>
+          <a href="/add" class="btn btn-primary">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+        </svg>
+        Add Your First Tool
+      </a>
   </div>
 );
 
 const App = () => {
+  console.log('🚀 App component rendering...');
   const [tools, setTools] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
 
@@ -136,7 +226,7 @@ const App = () => {
         </div>
         <a href="/add" class="btn btn-primary">
           <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
           </svg>
           Add Tool
         </a>

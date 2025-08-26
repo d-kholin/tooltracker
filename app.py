@@ -297,6 +297,41 @@ def report():
     return render_template('report.html', rows=rows)
 
 
+@app.route('/tool/<int:tool_id>')
+def tool_detail(tool_id):
+    with get_conn() as conn:
+        c = conn.cursor()
+        # Get tool details
+        c.execute(
+            """
+            SELECT t.id, t.name, t.description, t.value, t.image_path, p.name AS borrower, l.lent_on
+            FROM tools t
+            LEFT JOIN loans l ON t.id = l.tool_id AND l.returned_on IS NULL
+            LEFT JOIN people p ON l.person_id = p.id
+            WHERE t.id = ?
+            """,
+            (tool_id,),
+        )
+        tool = c.fetchone()
+        if not tool:
+            return redirect(url_for('index'))
+        
+        # Get lending history
+        c.execute(
+            """
+            SELECT l.lent_on, l.returned_on, p.name AS person_name, p.contact_info
+            FROM loans l
+            JOIN people p ON l.person_id = p.id
+            WHERE l.tool_id = ?
+            ORDER BY l.lent_on DESC
+            """,
+            (tool_id,),
+        )
+        loans = c.fetchall()
+    
+    return render_template('tool_detail.html', tool=tool, loans=loans)
+
+
 @app.route('/edit/<int:tool_id>', methods=['GET', 'POST'])
 def edit_tool(tool_id):
     with get_conn() as conn:
