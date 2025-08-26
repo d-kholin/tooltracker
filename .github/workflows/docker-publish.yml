@@ -22,6 +22,13 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Cache bust static files
+      run: |
+        # Add timestamp and commit info to force cache invalidation for static files
+        echo "// Build timestamp: $(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> static/js/app.js
+        echo "// Git commit: ${{ github.sha }}" >> static/js/app.js
+        echo "// Cache busted at: $(date)" >> static/js/app.js
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
@@ -66,7 +73,6 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
         # Aggressive cache busting to ensure fresh builds
         no-cache: true
-        no-cache-filters: true
         platforms: linux/amd64
         build-args: |
           BUILD_DATE=${{ github.event.head_commit.timestamp }}
