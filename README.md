@@ -2,6 +2,7 @@
 
 A modern web application for tracking tools and equipment lending. Built with Flask, React, and a clean, consistent design system.
 
+![Homepage Screenshot](pub/homepage.png)
 ## Features
 
 - **Tool Management**: Add, edit, and track tools with descriptions, values, and images
