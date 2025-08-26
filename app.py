@@ -74,11 +74,12 @@ def init_db():
             """
             CREATE TABLE IF NOT EXISTS people (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL UNIQUE,
+                name TEXT NOT NULL,
                 contact_info TEXT,
                 created_by TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(created_by) REFERENCES users(id)
+                FOREIGN KEY(created_by) REFERENCES users(id),
+                UNIQUE(name, created_by)
             )
             """
         )
@@ -97,6 +98,39 @@ def init_db():
             c.execute("ALTER TABLE people ADD COLUMN created_by TEXT")
         except sqlite3.OperationalError:
             pass
+        
+        # Fix people table unique constraint for multi-user support
+        try:
+            # Check if the old UNIQUE constraint on name exists
+            c.execute("PRAGMA index_list(people)")
+            indexes = c.fetchall()
+            has_old_constraint = any('sqlite_autoindex_people_1' in str(idx) for idx in indexes)
+            
+            if has_old_constraint:
+                # Create a temporary table with the new schema
+                c.execute("""
+                    CREATE TABLE people_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        contact_info TEXT,
+                        created_by TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(created_by) REFERENCES users(id),
+                        UNIQUE(name, created_by)
+                    )
+                """)
+                
+                # Copy data from old table
+                c.execute("INSERT INTO people_new SELECT * FROM people")
+                
+                # Drop old table and rename new one
+                c.execute("DROP TABLE people")
+                c.execute("ALTER TABLE people_new RENAME TO people")
+                
+                print("Successfully migrated people table for multi-user support")
+        except sqlite3.OperationalError as e:
+            print(f"Migration note: {e}")
+            # If migration fails, the table will be created with new schema on next run
         
         c.execute(
             """
@@ -526,7 +560,7 @@ def people():
                 )
                 conn.commit()
             except sqlite3.IntegrityError:
-                flash('Person already exists')
+                flash('A person with this name already exists in your list')
         return redirect(url_for('people'))
     with get_conn() as conn:
         c = conn.cursor()
@@ -600,7 +634,7 @@ def edit_person(person_id):
                 conn.commit()
                 return redirect(url_for('people'))
             except sqlite3.IntegrityError:
-                flash('Person already exists')
+                flash('A person with this name already exists in your list')
         c.execute("SELECT id, name, contact_info FROM people WHERE id=? AND created_by=?", (person_id, current_user.id))
         person = c.fetchone()
         if not person:
