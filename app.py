@@ -101,28 +101,46 @@ def init_db():
         
         # Fix people table unique constraint for multi-user support
         try:
-            # Check if the old UNIQUE constraint on name exists
+            print("Checking people table constraints...")
+            
+            # First, let's see what constraints currently exist
             c.execute("PRAGMA index_list(people)")
             indexes = c.fetchall()
-            has_old_constraint = any('sqlite_autoindex_people_1' in str(idx) for idx in indexes)
+            print(f"Current indexes: {indexes}")
             
-            # Also check table info to see if there's a unique constraint on name
+            # Check table info
             c.execute("PRAGMA table_info(people)")
             columns = c.fetchall()
-            name_column = next((col for col in columns if col[1] == 'name'), None)
-            if name_column and len(columns) >= 6 and name_column[5] == 1:  # Column 5 is unique constraint info
-                has_old_constraint = True
+            print(f"Table columns: {columns}")
             
-            # Check if the current constraint is correct
-            c.execute("PRAGMA index_list(people)")
-            current_indexes = c.fetchall()
-            has_correct_constraint = any('UNIQUE' in str(idx) and 'name' in str(idx) and 'created_by' in str(idx) for idx in current_indexes)
+            # Look for any unique constraints on just the name column
+            has_name_only_constraint = False
             
-            if has_old_constraint or not has_correct_constraint:
-                print("Found old constraint or missing correct constraint - migrating to new schema...")
-                # Create a temporary table with the new schema
+            # Check if there's a unique constraint on just the name column
+            for idx in indexes:
+                idx_name = str(idx[1]) if len(idx) > 1 else str(idx)
+                if 'sqlite_autoindex' in idx_name and 'people' in idx_name:
+                    # This is an auto-generated index, likely for a unique constraint
+                    has_name_only_constraint = True
+                    print(f"Found auto-generated index: {idx_name}")
+                    break
+            
+            # Also check if we need to migrate
+            needs_migration = has_name_only_constraint
+            
+            if needs_migration:
+                print("Found constraint that needs migration - performing migration...")
+                
+                # Get all existing data
+                c.execute("SELECT * FROM people")
+                existing_data = c.fetchall()
+                print(f"Found {len(existing_data)} existing people records")
+                
+                # Create a completely new table with the correct schema
+                c.execute("DROP TABLE people")
+                
                 c.execute("""
-                    CREATE TABLE people_new (
+                    CREATE TABLE people (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         name TEXT NOT NULL,
                         contact_info TEXT,
@@ -133,19 +151,58 @@ def init_db():
                     )
                 """)
                 
-                # Copy data from old table
-                c.execute("INSERT INTO people_new SELECT * FROM people")
+                # Re-insert all the data
+                if existing_data:
+                    for row in existing_data:
+                        # Handle different column counts (for backward compatibility)
+                        if len(row) >= 4:  # id, name, contact_info, created_by
+                            c.execute("""
+                                INSERT INTO people (id, name, contact_info, created_by, created_at) 
+                                VALUES (?, ?, ?, ?, ?)
+                            """, (row[0], row[1], row[2], row[3], row[4] if len(row) > 4 else 'CURRENT_TIMESTAMP'))
+                        elif len(row) >= 3:  # id, name, contact_info
+                            c.execute("""
+                                INSERT INTO people (id, name, contact_info, created_by, created_at) 
+                                VALUES (?, ?, ?, ?, ?)
+                            """, (row[0], row[1], row[2], 'unknown', 'CURRENT_TIMESTAMP'))
+                        elif len(row) >= 2:  # id, name
+                            c.execute("""
+                                INSERT INTO people (id, name, contact_info, created_by, created_at) 
+                                VALUES (?, ?, ?, ?, ?)
+                            """, (row[0], row[1], '', 'unknown', 'CURRENT_TIMESTAMP'))
                 
-                # Drop old table and rename new one
-                c.execute("DROP TABLE people")
-                c.execute("ALTER TABLE people_new RENAME TO people")
+                print("✓ Successfully migrated people table for multi-user support")
                 
-                print("Successfully migrated people table for multi-user support")
+                # Verify the new constraint
+                c.execute("PRAGMA index_list(people)")
+                new_indexes = c.fetchall()
+                print(f"New indexes after migration: {new_indexes}")
+                
             else:
-                print("People table already has correct constraint")
+                print("✓ People table already has correct constraint or no migration needed")
+                
         except sqlite3.OperationalError as e:
-            print(f"Migration note: {e}")
-            # If migration fails, the table will be created with new schema on next run
+            print(f"Migration error: {e}")
+            # If migration fails, try to create the table with correct schema
+            try:
+                print("Attempting to recreate table with correct schema...")
+                c.execute("DROP TABLE IF EXISTS people")
+                c.execute("""
+                    CREATE TABLE people (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        contact_info TEXT,
+                        created_by TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(created_by) REFERENCES users(id),
+                        UNIQUE(name, created_by)
+                    )
+                """)
+                print("✓ Recreated people table with correct schema")
+            except sqlite3.OperationalError as e2:
+                print(f"Failed to recreate table: {e2}")
+        except Exception as e:
+            print(f"Unexpected error during migration: {e}")
         
         c.execute(
             """
@@ -171,6 +228,46 @@ def init_db():
             pass
         
         conn.commit()
+
+def test_people_constraint():
+    """Test that the people table constraint is working correctly"""
+    try:
+        with get_conn() as conn:
+            c = conn.cursor()
+            
+            # Check if we have at least one user
+            c.execute("SELECT id FROM users LIMIT 1")
+            user = c.fetchone()
+            if not user:
+                print("No users found - cannot test constraint")
+                return False
+            
+            user_id = user[0]
+            print(f"Testing constraint with user ID: {user_id}")
+            
+            # Try to add a test person
+            test_name = "_TEST_CONSTRAINT_"
+            c.execute("INSERT INTO people (name, contact_info, created_by) VALUES (?, ?, ?)", 
+                     (test_name, 'test@example.com', user_id))
+            print("✓ Successfully added test person")
+            
+            # Try to add another person with same name for same user (should fail)
+            try:
+                c.execute("INSERT INTO people (name, contact_info, created_by) VALUES (?, ?, ?)", 
+                         (test_name, 'test2@example.com', user_id))
+                print("✗ WARNING: Constraint not working - duplicate names allowed for same user")
+                # Clean up both test entries
+                c.execute("DELETE FROM people WHERE name = ? AND created_by = ?", (test_name, user_id))
+                return False
+            except sqlite3.IntegrityError:
+                print("✓ Constraint working correctly - prevents duplicate names for same user")
+                # Clean up test entry
+                c.execute("DELETE FROM people WHERE name = ? AND created_by = ?", (test_name, user_id))
+                return True
+                
+    except Exception as e:
+        print(f"Error testing constraint: {e}")
+        return False
 
 # Database initialization will be done in app context
 
@@ -822,5 +919,7 @@ if __name__ == '__main__':
     with app.app_context():
         init_auth_db(app)
         init_db()
+        # Test the people table constraint after initialization
+        test_people_constraint()
     
     app.run(host='0.0.0.0', port=5000)
