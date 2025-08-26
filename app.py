@@ -338,7 +338,26 @@ def tool_detail(tool_id):
             """,
             (tool_id,),
         )
-        loans = c.fetchall()
+        loans_raw = c.fetchall()
+        
+        # Calculate duration for each loan
+        loans = []
+        for loan in loans_raw:
+            loan_dict = dict(loan)
+            if loan_dict['returned_on'] and loan_dict['lent_on']:
+                try:
+                    lent_date = datetime.datetime.strptime(loan_dict['lent_on'], '%Y-%m-%d').date()
+                    returned_date = datetime.datetime.strptime(loan_dict['returned_on'], '%Y-%m-%d').date()
+                    duration_days = (returned_date - lent_date).days
+                    if duration_days == 0:
+                        loan_dict['duration'] = '1 day'
+                    else:
+                        loan_dict['duration'] = f'{duration_days + 1} days'
+                except (ValueError, TypeError):
+                    loan_dict['duration'] = 'Unknown'
+            else:
+                loan_dict['duration'] = '-'
+            loans.append(loan_dict)
     
     return render_template('tool_detail.html', tool=tool, loans=loans)
 
