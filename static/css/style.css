@@ -16,6 +16,29 @@ h1 {
   margin-bottom: 1.5rem;
 }
 
+/* Tool Cards */
+.tool-card {
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tool-card * {
+  pointer-events: auto;
+}
+
+.tool-card .action-buttons {
+  position: relative;
+  z-index: 10;
+}
+
+.tool-card .action-buttons button,
+.tool-card .action-buttons form,
+.tool-card .action-buttons a {
+  position: relative;
+  z-index: 11;
+}
+
 /* Form controls */
 .form-control {
   border: 1px solid #d1d5db;

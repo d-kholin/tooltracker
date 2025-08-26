@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% block title %}{{ tool.name }} - Tool Tracker{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+  <div class="mb-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">{{ tool.name }}</h1>
+        <p class="text-gray-600 mt-2">Tool details and lending history</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="/edit/{{ tool.id }}" class="btn btn-secondary">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+          </svg>
+          Edit Tool
+        </a>
+        <a href="/" class="btn btn-secondary">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+          </svg>
+          Back to Tools
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tool Information -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">Tool Information</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- Tool Image -->
+      <div>
+        {% if tool.image_path %}
+        <img 
+          src="{{ url_for('static', filename=tool.image_path) }}" 
+          alt="{{ tool.name }}"
+          class="w-full h-64 object-cover rounded-lg border border-gray-200"
+        >
+        {% else %}
+        <div class="w-full h-64 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
+          <svg class="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+          </svg>
+        </div>
+        {% endif %}
+      </div>
+      
+      <!-- Tool Details -->
+      <div class="space-y-4">
+        <div>
+          <label class="text-sm font-medium text-gray-500">Current Status</label>
+          <div class="mt-1">
+            {% if tool.borrower %}
+            <span class="status-lent">Currently lent to {{ tool.borrower }}</span>
+            <p class="text-sm text-gray-600 mt-1">Lent on {{ tool.lent_on }}</p>
+            {% else %}
+            <span class="status-available">Available</span>
+            {% endif %}
+          </div>
+        </div>
+        
+        {% if tool.description %}
+        <div>
+          <label class="text-sm font-medium text-gray-500">Description</label>
+          <p class="text-gray-900 mt-1">{{ tool.description }}</p>
+        </div>
+        {% endif %}
+        
+        {% if tool.value %}
+        <div>
+          <label class="text-sm font-medium text-gray-500">Estimated Value</label>
+          <p class="text-gray-900 mt-1">${{ "%.2f"|format(tool.value) }}</p>
+        </div>
+        {% endif %}
+        
+        <!-- Action Buttons -->
+        <div class="pt-4">
+          {% if tool.borrower %}
+          <form method="POST" action="/return/{{ tool.id }}" class="inline">
+            <button type="submit" class="btn btn-secondary">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+              </svg>
+              Return Tool
+            </button>
+          </form>
+          {% else %}
+          <a href="/lend/{{ tool.id }}" class="btn btn-primary">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            </svg>
+            Lend Tool
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lending History -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Lending History</h2>
+    </div>
+    
+    {% if loans %}
+    <div class="table-responsive">
+      <table class="table w-full">
+        <thead>
+          <tr>
+            <th>Person</th>
+            <th>Contact Info</th>
+            <th>Lent On</th>
+            <th>Returned On</th>
+            <th>Duration</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for loan in loans %}
+          <tr class="hover:bg-gray-50">
+            <td class="font-medium text-gray-900">{{ loan.person_name }}</td>
+            <td class="text-gray-600">
+              {% if loan.contact_info %}
+                {{ loan.contact_info }}
+              {% else %}
+                <span class="text-gray-400">No contact info</span>
+              {% endif %}
+            </td>
+            <td class="text-gray-600">{{ loan.lent_on }}</td>
+            <td class="text-gray-600">
+              {% if loan.returned_on %}
+                {{ loan.returned_on }}
+              {% else %}
+                <span class="text-orange-600 font-medium">Currently Out</span>
+              {% endif %}
+            </td>
+            <td class="text-gray-600">
+              {% if loan.returned_on %}
+                {% set lent_date = loan.lent_on.split(' ')[0] %}
+                {% set returned_date = loan.returned_on.split(' ')[0] %}
+                {% set duration = ((returned_date|string|strptime('%Y-%m-%d') - lent_date|string|strptime('%Y-%m-%d')).days) %}
+                {% if duration == 0 %}
+                  1 day
+                {% elif duration == 1 %}
+                  2 days
+                {% else %}
+                  {{ duration + 1 }} days
+                {% endif %}
+              {% else %}
+                <span class="text-orange-600 font-medium">-</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-12">
+      <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+      </div>
+      <h3 class="text-lg font-medium text-gray-900 mb-2">No lending history</h3>
+      <p class="text-gray-500">This tool hasn't been lent out yet.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
