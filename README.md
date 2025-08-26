@@ -11,6 +11,9 @@ A modern web application for tracking tools and equipment lending. Built with Fl
 - **People Management**: Maintain a database of people who borrow tools
 - **Reporting**: View current loans and lending history
 - **Responsive Design**: Works seamlessly on desktop and mobile devices
+- **Multi-User Authentication**: OIDC-based authentication with support for multiple users
+- **User Isolation**: Each user can only access their own tools and people
+- **Audit Trail**: Track who created tools, people, and loans
 
 ## Technology Stack
 
@@ -20,6 +23,7 @@ A modern web application for tracking tools and equipment lending. Built with Fl
 - **Icons**: Heroicons (SVG)
 - **Fonts**: Inter (Google Fonts)
 - **Database**: SQLite
+- **Authentication**: OIDC (OpenID Connect) with Flask-Login
 - **Containerization**: Docker with GitHub Container Registry (GHCR)
 
 ## Getting Started
@@ -40,6 +44,22 @@ A modern web application for tracking tools and equipment lending. Built with Fl
 3. **Access the application:**
    Open your browser to `http://localhost:5000`
 
+### Authentication Setup
+
+The application now requires OIDC authentication. Before running, you need to:
+
+1. **Copy and configure environment variables:**
+   ```bash
+   cp env.example .env
+   # Edit .env with your OIDC provider details
+   ```
+
+2. **Set up an OIDC identity provider** (Auth0, Okta, Keycloak, etc.)
+
+3. **Configure OIDC settings** in your `.env` file
+
+For detailed setup instructions, see [AUTHENTICATION_SETUP.md](AUTHENTICATION_SETUP.md).
+
 ### Option 2: Direct Docker
 
 1. **Pull the pre-built image:**
@@ -57,7 +77,11 @@ A modern web application for tracking tools and equipment lending. Built with Fl
 ```
 tooltracker/
 ├── app.py                 # Flask application
+├── config.py              # Configuration management
+├── auth.py                # Authentication and OIDC handling
 ├── requirements.txt       # Python dependencies
+├── env.example            # Environment variables template
+├── AUTHENTICATION_SETUP.md # OIDC setup guide
 ├── Dockerfile            # Docker configuration
 ├── docker-compose.yml    # Docker Compose configuration
 ├── .dockerignore         # Docker build exclusions
@@ -80,6 +104,7 @@ tooltracker/
 │   └── images/           # Tool images (persisted in volumes)
 └── templates/
     ├── base.html         # Base template with navigation
+    ├── login.html        # OIDC login page
     ├── index.html        # Main tools page
     ├── add_tool.html     # Add tool form
     ├── edit_tool.html    # Edit tool form
