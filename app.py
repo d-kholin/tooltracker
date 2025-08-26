@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import datetime
+import uuid
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from werkzeug.utils import secure_filename
 
@@ -10,6 +11,30 @@ UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join('static', 'images')
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', os.urandom(24).hex())
+
+
+def generate_unique_filename(original_filename):
+    """Generate a unique filename to prevent conflicts"""
+    if not original_filename:
+        return None
+    
+    # Get file extension
+    _, ext = os.path.splitext(original_filename)
+    ext = ext.lower()  # Normalize extension
+    
+    # Validate file extension (only allow common image formats)
+    allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
+    if ext not in allowed_extensions:
+        ext = '.jpg'  # Default to jpg if extension is not recognized
+    
+    # Generate unique filename with timestamp and UUID
+    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    unique_id = str(uuid.uuid4())[:8]  # Use first 8 characters of UUID
+    
+    # Create new filename
+    new_filename = f"tool_{timestamp}_{unique_id}{ext}"
+    
+    return new_filename
 
 
 def get_conn():
@@ -24,9 +49,14 @@ def get_conn():
 
 
 def init_db():
-    # Ensure the upload folder exists
+    # Ensure the upload folder exists and has proper permissions
     if not os.path.exists(UPLOAD_FOLDER):
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        print(f"Created upload folder: {UPLOAD_FOLDER}")
+    
+    # Ensure the folder is writable
+    if not os.access(UPLOAD_FOLDER, os.W_OK):
+        print(f"Warning: Upload folder {UPLOAD_FOLDER} is not writable")
     
     with get_conn() as conn:
         c = conn.cursor()
@@ -123,12 +153,19 @@ def add_tool():
         image_file = request.files.get('image')
         image_path = None
         if image_file and image_file.filename:
-            os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-            filename = secure_filename(image_file.filename)
-            save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            image_file.save(save_path)
-            # Store relative path for database, but ensure it works with our new structure
-            image_path = os.path.join('images', filename)
+            try:
+                os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+                # Generate unique filename to prevent conflicts
+                unique_filename = generate_unique_filename(image_file.filename)
+                save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+                image_file.save(save_path)
+                # Store relative path for database, but ensure it works with our new structure
+                image_path = os.path.join('images', unique_filename)
+                print(f"Image uploaded successfully: {unique_filename}")
+            except Exception as e:
+                print(f"Error uploading image: {e}")
+                image_path = None
+                flash('Error uploading image. Please try again.')
         with get_conn() as conn:
             c = conn.cursor()
             c.execute(
@@ -138,6 +175,19 @@ def add_tool():
             conn.commit()
         return redirect(url_for('index'))
     return render_template('add_tool.html')
+
+
+def delete_tool_image(image_path):
+    """Delete the image file if it exists"""
+    if image_path:
+        try:
+            # Convert relative path to absolute path
+            full_path = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(image_path))
+            if os.path.exists(full_path):
+                os.remove(full_path)
+                print(f"Deleted image file: {full_path}")
+        except Exception as e:
+            print(f"Error deleting image file: {e}")
 
 
 @app.route('/delete/<int:tool_id>', methods=['POST'])
@@ -151,6 +201,12 @@ def delete_tool(tool_id):
         if c.fetchone()[0] > 0:
             flash('Cannot delete tool: it is currently lent out')
         else:
+            # Get the image path before deleting the tool
+            c.execute("SELECT image_path FROM tools WHERE id=?", (tool_id,))
+            tool = c.fetchone()
+            if tool and tool['image_path']:
+                delete_tool_image(tool['image_path'])
+            
             c.execute("DELETE FROM tools WHERE id=?", (tool_id,))
             conn.commit()
     return redirect(url_for('index'))
@@ -373,12 +429,29 @@ def edit_tool(tool_id):
             value = float(value_raw) if value_raw else 0
             image_file = request.files.get('image')
             if image_file and image_file.filename:
-                os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-                filename = secure_filename(image_file.filename)
-                save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                image_file.save(save_path)
-                # Store relative path for database, but ensure it works with our new structure
-                image_path = os.path.join('images', filename)
+                try:
+                    # Get the old image path before updating
+                    c.execute("SELECT image_path FROM tools WHERE id=?", (tool_id,))
+                    old_tool = c.fetchone()
+                    old_image_path = old_tool['image_path'] if old_tool else None
+                    
+                    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+                    # Generate unique filename to prevent conflicts
+                    unique_filename = generate_unique_filename(image_file.filename)
+                    save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+                    image_file.save(save_path)
+                    # Store relative path for database, but ensure it works with our new structure
+                    image_path = os.path.join('images', unique_filename)
+                    print(f"Image updated successfully: {unique_filename}")
+                    
+                    # Delete the old image if it exists
+                    if old_image_path:
+                        delete_tool_image(old_image_path)
+                        
+                except Exception as e:
+                    print(f"Error updating image: {e}")
+                    image_path = None
+                    flash('Error updating image. Please try again.')
                 c.execute(
                     "UPDATE tools SET name=?, description=?, value=?, image_path=? WHERE id=?",
                     (name, description, value, image_path, tool_id),
