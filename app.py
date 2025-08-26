@@ -765,8 +765,7 @@ def edit_tool(tool_id):
 def serve_image(filename):
     """Serve images from the data directory"""
     from flask import send_from_directory
-    data_dir = os.path.dirname(app.config['UPLOAD_FOLDER'])
-    return send_from_directory(data_dir, f'images/{filename}')
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
 if __name__ == '__main__':

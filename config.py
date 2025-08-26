@@ -7,8 +7,8 @@ load_dotenv()
 class Config:
     """Base configuration class"""
     SECRET_KEY = os.environ.get('SECRET_KEY') or os.urandom(24).hex()
-    TOOLTRACKER_DB = os.environ.get('TOOLTRACKER_DB', 'tooltracker.db')
-    UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join('static', 'images'))
+    TOOLTRACKER_DB = os.environ.get('TOOLTRACKER_DB', '/data/tooltracker.db')
+    UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', '/data/images')
     
     # OIDC Configuration
     OIDC_CLIENT_ID = os.environ.get('OIDC_CLIENT_ID')
