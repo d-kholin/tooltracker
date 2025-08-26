@@ -74,7 +74,7 @@ def init_db():
             """
             CREATE TABLE IF NOT EXISTS people (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL UNIQUE,
+                name TEXT NOT NULL,
                 contact_info TEXT,
                 created_by TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -95,6 +95,12 @@ def init_db():
             pass
         try:
             c.execute("ALTER TABLE people ADD COLUMN created_by TEXT")
+        except sqlite3.OperationalError:
+            pass
+        
+        # Add composite unique constraint for people (name + created_by) to allow same names across different users
+        try:
+            c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_people_name_user ON people (name, created_by)")
         except sqlite3.OperationalError:
             pass
         
@@ -120,6 +126,96 @@ def init_db():
             c.execute("ALTER TABLE loans ADD COLUMN lent_by TEXT")
         except sqlite3.OperationalError:
             pass
+        
+        conn.commit()
+
+def migrate_existing_database():
+    """Migrate existing database to fix people table constraints"""
+    print("Starting database migration...")
+    
+    with get_conn() as conn:
+        c = conn.cursor()
+        
+        # Check if the people table exists and has the old constraint
+        c.execute("PRAGMA table_info(people)")
+        table_info = c.fetchall()
+        
+        if not table_info:
+            print("People table doesn't exist, skipping migration")
+            return
+        
+        print(f"Found people table with {len(table_info)} columns")
+        
+        # Check existing indexes on the people table
+        c.execute("PRAGMA index_list(people)")
+        indexes = c.fetchall()
+        print(f"Current indexes on people table: {[idx[1] for idx in indexes]}")
+        
+        # Look for the old auto-generated unique index on name
+        old_index_found = False
+        for index in indexes:
+            if index[1] == 'sqlite_autoindex_people_1':
+                old_index_found = True
+                print(f"Found old auto-generated unique index: {index[1]}")
+                break
+        
+        if old_index_found:
+            print("Removing old global unique constraint on people.name...")
+            try:
+                # Drop the old auto-generated unique index
+                c.execute("DROP INDEX sqlite_autoindex_people_1")
+                print("Successfully removed old unique constraint")
+            except sqlite3.OperationalError as e:
+                print(f"Warning: Could not remove old constraint: {e}")
+        
+        # Check if we need to add the created_by column
+        has_created_by = any(col[1] == 'created_by' for col in table_info)
+        if not has_created_by:
+            print("Adding created_by column to people table...")
+            try:
+                c.execute("ALTER TABLE people ADD COLUMN created_by TEXT")
+                print("Successfully added created_by column")
+            except sqlite3.OperationalError as e:
+                print(f"Warning: Could not add created_by column: {e}")
+        
+        # Create the new composite unique constraint
+        print("Creating new composite unique constraint on (name, created_by)...")
+        try:
+            c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_people_name_user ON people (name, created_by)")
+            print("Successfully created new composite unique constraint")
+        except sqlite3.OperationalError as e:
+            print(f"Warning: Could not create new constraint: {e}")
+        
+        # Check if we need to update existing records that don't have created_by set
+        c.execute("SELECT COUNT(*) FROM people WHERE created_by IS NULL")
+        null_created_by_count = c.fetchone()[0]
+        
+        if null_created_by_count > 0:
+            print(f"Found {null_created_by_count} people records without created_by, updating...")
+            
+            # Get all users to assign records to
+            c.execute("SELECT id FROM users")
+            users = c.fetchall()
+            
+            if users:
+                # Assign all orphaned people to the first user (you might want to customize this)
+                default_user_id = users[0][0]
+                c.execute("UPDATE people SET created_by = ? WHERE created_by IS NULL", (default_user_id,))
+                print(f"Assigned {null_created_by_count} people records to user {default_user_id}")
+            else:
+                print("Warning: No users found, cannot assign orphaned people records")
+        
+        # Verify the migration
+        c.execute("PRAGMA index_list(people)")
+        final_indexes = c.fetchall()
+        print(f"Final indexes on people table: {[idx[1] for idx in final_indexes]}")
+        
+        # Check if the new constraint was created
+        new_constraint_exists = any('idx_people_name_user' in idx[1] for idx in final_indexes)
+        if new_constraint_exists:
+            print("✅ Migration completed successfully!")
+        else:
+            print("❌ Migration may have failed - new constraint not found")
         
         conn.commit()
 
@@ -401,6 +497,32 @@ def add_tool():
     return render_template('add_tool.html')
 
 
+@app.route('/add_person', methods=['GET', 'POST'])
+@auth_required
+def add_person():
+    if request.method == 'POST':
+        name = request.form['name']
+        contact_info = request.form.get('contact_info', '')
+        
+        # Debug: Print current user info
+        print(f"Adding person: {name}, contact: {contact_info}, user: {current_user.id if current_user.is_authenticated else 'Not authenticated'}")
+        
+        with get_conn() as conn:
+            c = conn.cursor()
+            try:
+                c.execute(
+                    "INSERT INTO people (name, contact_info, created_by) VALUES (?, ?, ?)",
+                    (name, contact_info, current_user.id),
+                )
+                conn.commit()
+                flash('Person added successfully!')
+                return redirect(url_for('people'))
+            except sqlite3.IntegrityError:
+                flash('Person already exists')
+        return render_template('add_person.html')
+    return render_template('add_person.html')
+
+
 def delete_tool_image(image_path):
     """Delete the image file if it exists"""
     if image_path:
@@ -511,27 +633,20 @@ def return_tool(tool_id):
     return redirect(url_for('index'))
 
 
-@app.route('/people', methods=['GET', 'POST'])
+@app.route('/people', methods=['GET'])
 @auth_required
 def people():
-    if request.method == 'POST':
-        name = request.form['name']
-        contact_info = request.form.get('contact_info', '')
-        with get_conn() as conn:
-            c = conn.cursor()
-            try:
-                c.execute(
-                    "INSERT INTO people (name, contact_info, created_by) VALUES (?, ?, ?)",
-                    (name, contact_info, current_user.id),
-                )
-                conn.commit()
-            except sqlite3.IntegrityError:
-                flash('Person already exists')
-        return redirect(url_for('people'))
+    # Debug: Print current user info
+    print(f"Fetching people for user: {current_user.id if current_user.is_authenticated else 'Not authenticated'}")
+    
     with get_conn() as conn:
         c = conn.cursor()
         c.execute("SELECT id, name, contact_info FROM people WHERE created_by = ? ORDER BY name", (current_user.id,))
         people = c.fetchall()
+        print(f"Found {len(people)} people for user {current_user.id}")
+        for person in people:
+            print(f"  - {person['name']} (ID: {person['id']})")
+    
     return render_template('people.html', people=people)
 
 
@@ -774,5 +889,6 @@ if __name__ == '__main__':
     with app.app_context():
         init_auth_db(app)
         init_db()
+        migrate_existing_database() # Call the migration function to fix existing databases
     
     app.run(host='0.0.0.0', port=5000)
