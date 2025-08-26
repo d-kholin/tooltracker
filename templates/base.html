@@ -51,6 +51,31 @@
           <a href="{{ url_for('report') }}" class="text-gray-600 hover:text-brand font-medium transition-colors">Report</a>
         </nav>
 
+        <!-- User menu and authentication -->
+        <div class="flex items-center space-x-4">
+          {% if current_user.is_authenticated %}
+            <div class="flex items-center space-x-3">
+              {% if current_user.picture %}
+                <img src="{{ current_user.picture }}" alt="{{ current_user.name }}" class="w-8 h-8 rounded-full">
+              {% else %}
+                <div class="w-8 h-8 bg-brand rounded-full flex items-center justify-center">
+                  <span class="text-white text-sm font-medium">{{ current_user.name[0].upper() }}</span>
+                </div>
+              {% endif %}
+              <span class="text-gray-700 font-medium">{{ current_user.name }}</span>
+              <a href="{{ url_for('logout') }}" class="text-gray-600 hover:text-red-600 font-medium transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                </svg>
+              </a>
+            </div>
+          {% else %}
+            <a href="{{ url_for('login') }}" class="bg-brand hover:bg-brand-hover text-white px-4 py-2 rounded-lg font-medium transition-colors">
+              Sign In
+            </a>
+          {% endif %}
+        </div>
+
         <!-- Mobile menu button -->
         <div class="md:hidden">
           <button type="button" class="text-gray-600 hover:text-brand p-2" id="mobile-menu-button">
@@ -67,6 +92,17 @@
           <a href="{{ url_for('index') }}" class="block px-3 py-2 text-gray-600 hover:text-brand font-medium">Tools</a>
           <a href="{{ url_for('people') }}" class="block px-3 py-2 text-gray-600 hover:text-brand font-medium">People</a>
           <a href="{{ url_for('report') }}" class="block px-3 py-2 text-gray-600 hover:text-brand font-medium">Report</a>
+          
+          {% if current_user.is_authenticated %}
+            <div class="border-t border-gray-200 pt-2 mt-2">
+              <div class="px-3 py-2 text-gray-700 font-medium">{{ current_user.name }}</div>
+              <a href="{{ url_for('logout') }}" class="block px-3 py-2 text-red-600 hover:text-red-800 font-medium">Sign Out</a>
+            </div>
+          {% else %}
+            <div class="border-t border-gray-200 pt-2 mt-2">
+              <a href="{{ url_for('login') }}" class="block px-3 py-2 bg-brand text-white rounded font-medium">Sign In</a>
+            </div>
+          {% endif %}
         </div>
       </div>
     </div>
