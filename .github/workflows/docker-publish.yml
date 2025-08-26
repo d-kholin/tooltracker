@@ -38,12 +38,10 @@ jobs:
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
-          type=ref,event=branch
-          type=ref,event=pr
+          type=raw,value=latest,enable={{is_default_branch}}
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
-          type=sha,prefix=sha-
-          type=raw,value=latest
+          type=ref,event=branch,enable={{is_default_branch}}
         labels: |
           org.opencontainers.image.title=tooltracker
           org.opencontainers.image.description=A simple web app to track my tools, and where I've lent them out!
@@ -53,6 +51,12 @@ jobs:
           org.opencontainers.image.version=${{ steps.meta.outputs.version }}
           org.opencontainers.image.revision=${{ github.sha }}
 
+    - name: Debug metadata
+      run: |
+        echo "Generated tags: ${{ steps.meta.outputs.tags }}"
+        echo "Generated labels: ${{ steps.meta.outputs.labels }}"
+        echo "Is default branch: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}"
+
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
@@ -60,8 +64,11 @@ jobs:
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
-        # Disable caching to ensure fresh builds with latest code
+        # Aggressive cache busting to ensure fresh builds
         no-cache: true
+        no-cache-filters: true
+        platforms: linux/amd64
         build-args: |
           BUILD_DATE=${{ github.event.head_commit.timestamp }}
           VCS_REF=${{ github.sha }}
+          CACHE_BUST=${{ github.sha }}
