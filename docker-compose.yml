@@ -6,15 +6,13 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      # Mount the working directory for database persistence
-      - tooltracker_data:/app
-      # Alternative: Mount specific database file location
-      # - tooltracker_db:/app/tooltracker.db
+      # Mount a data directory for database and images, preserving app code
+      - tooltracker_data:/app/data
     environment:
       - FLASK_ENV=production
       - FLASK_DEBUG=0
-      # Optional: Set custom database path if needed
-      # - TOOLTRACKER_DB=/app/data/tooltracker.db
+      - TOOLTRACKER_DB=/app/data/tooltracker.db
+      - UPLOAD_FOLDER=/app/data/images
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]

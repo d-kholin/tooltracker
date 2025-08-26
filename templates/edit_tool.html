@@ -33,7 +33,7 @@
         {% if tool.image_path %}
         <div class="mb-4">
           <p class="text-sm text-gray-600 mb-2">Current image:</p>
-          <img src="{{ url_for('static', filename=tool.image_path) }}" alt="{{ tool.name }}" class="w-32 h-32 object-cover rounded-lg border border-gray-200">
+          <img src="/data/{{ tool.image_path }}" alt="{{ tool.name }}" class="w-32 h-32 object-cover rounded-lg border border-gray-200">
         </div>
         {% endif %}
         

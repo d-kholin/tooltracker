@@ -35,7 +35,7 @@
       <div>
         {% if tool.image_path %}
         <img 
-          src="{{ url_for('static', filename=tool.image_path) }}" 
+          src="/data/{{ tool.image_path }}" 
           alt="{{ tool.name }}"
           class="w-full h-64 object-cover rounded-lg border border-gray-200"
         >
@@ -139,16 +139,7 @@
             </td>
             <td class="text-gray-600">
               {% if loan.returned_on %}
-                {% set lent_date = loan.lent_on.split(' ')[0] %}
-                {% set returned_date = loan.returned_on.split(' ')[0] %}
-                {% set duration = ((returned_date|string|strptime('%Y-%m-%d') - lent_date|string|strptime('%Y-%m-%d')).days) %}
-                {% if duration == 0 %}
-                  1 day
-                {% elif duration == 1 %}
-                  2 days
-                {% else %}
-                  {{ duration + 1 }} days
-                {% endif %}
+                {{ loan.duration }}
               {% else %}
                 <span class="text-orange-600 font-medium">-</span>
               {% endif %}

@@ -5,19 +5,29 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from werkzeug.utils import secure_filename
 
 DB_PATH = os.environ.get('TOOLTRACKER_DB', 'tooltracker.db')
+UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join('static', 'images'))
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = os.path.join('static', 'images')
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['SECRET_KEY'] = 'dev'
 
 
 def get_conn():
+    # Ensure the directory for the database exists
+    db_dir = os.path.dirname(DB_PATH)
+    if db_dir and not os.path.exists(db_dir):
+        os.makedirs(db_dir, exist_ok=True)
+    
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
 
 def init_db():
+    # Ensure the upload folder exists
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    
     with get_conn() as conn:
         c = conn.cursor()
         c.execute(
@@ -117,6 +127,7 @@ def add_tool():
             filename = secure_filename(image_file.filename)
             save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             image_file.save(save_path)
+            # Store relative path for database, but ensure it works with our new structure
             image_path = os.path.join('images', filename)
         with get_conn() as conn:
             c = conn.cursor()
@@ -327,7 +338,26 @@ def tool_detail(tool_id):
             """,
             (tool_id,),
         )
-        loans = c.fetchall()
+        loans_raw = c.fetchall()
+        
+        # Calculate duration for each loan
+        loans = []
+        for loan in loans_raw:
+            loan_dict = dict(loan)
+            if loan_dict['returned_on'] and loan_dict['lent_on']:
+                try:
+                    lent_date = datetime.datetime.strptime(loan_dict['lent_on'], '%Y-%m-%d').date()
+                    returned_date = datetime.datetime.strptime(loan_dict['returned_on'], '%Y-%m-%d').date()
+                    duration_days = (returned_date - lent_date).days
+                    if duration_days == 0:
+                        loan_dict['duration'] = '1 day'
+                    else:
+                        loan_dict['duration'] = f'{duration_days + 1} days'
+                except (ValueError, TypeError):
+                    loan_dict['duration'] = 'Unknown'
+            else:
+                loan_dict['duration'] = '-'
+            loans.append(loan_dict)
     
     return render_template('tool_detail.html', tool=tool, loans=loans)
 
@@ -347,6 +377,7 @@ def edit_tool(tool_id):
                 filename = secure_filename(image_file.filename)
                 save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 image_file.save(save_path)
+                # Store relative path for database, but ensure it works with our new structure
                 image_path = os.path.join('images', filename)
                 c.execute(
                     "UPDATE tools SET name=?, description=?, value=?, image_path=? WHERE id=?",
@@ -362,6 +393,14 @@ def edit_tool(tool_id):
         c.execute("SELECT * FROM tools WHERE id=?", (tool_id,))
         tool = c.fetchone()
     return render_template('edit_tool.html', tool=tool)
+
+
+@app.route('/data/images/<filename>')
+def serve_image(filename):
+    """Serve images from the data directory"""
+    from flask import send_from_directory
+    data_dir = os.path.dirname(UPLOAD_FOLDER)
+    return send_from_directory(data_dir, f'images/{filename}')
 
 
 if __name__ == '__main__':
