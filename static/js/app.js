@@ -15,8 +15,8 @@ const ToolCard = ({ tool }) => {
   };
   
   const handleReturnClick = (e) => {
-    e.preventDefault();
     e.stopPropagation();
+    // Don't prevent default - let the form submit naturally
   };
   
   const handleEditClick = (e) => {
