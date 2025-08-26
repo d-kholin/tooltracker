@@ -1,51 +1,37 @@
 const ToolCard = ({ tool }) => {
-  console.log('🎯 ToolCard rendering for tool:', tool.id, tool.name);
   const navigateToDetail = () => {
-    console.log('Navigating to tool detail:', tool.id);
     window.location.href = `/tool/${tool.id}`;
   };
   
   const navigateToEdit = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('Navigating to edit:', tool.id);
     window.location.href = `/edit/${tool.id}`;
   };
   
   const handleLendClick = (e) => {
     e.stopPropagation();
-    console.log('Lend click - allowing navigation to lend page');
     // Don't prevent default - let the link navigate naturally
   };
   
   const handleReturnClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('Return click - allowing form submission');
   };
   
   const handleEditClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('Edit click - navigating to edit');
     navigateToEdit(e);
   };
   
   const handleHistoryClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('History click - navigating to detail');
     navigateToDetail();
   };
   
   const handleCardClick = (e) => {
-    console.log('=== CARD CLICK DEBUG ===');
-    console.log('Event target:', e.target);
-    console.log('Target tagName:', e.target.tagName);
-    console.log('Target className:', e.target.className);
-    console.log('Target id:', e.target.id);
-    console.log('Target textContent:', e.target.textContent ? e.target.textContent.substring(0, 50) : '');
-    
     // Check if we clicked on an action element - be more specific
     const target = e.target;
     
@@ -58,21 +44,9 @@ const ToolCard = ({ tool }) => {
                            target.closest('select') ||
                            target.closest('textarea');
     
-    console.log('Is action element?', !!isActionElement);
-    console.log('Target closest data-action:', target.closest('[data-action]'));
-    console.log('Target closest button:', target.closest('button'));
-    console.log('Target closest form:', target.closest('form'));
-    console.log('Target closest a:', target.closest('a'));
-    
     if (!isActionElement) {
-      console.log('✅ Content area clicked, navigating to detail');
       navigateToDetail();
-    } else {
-      console.log('❌ Action element clicked, not navigating');
-      console.log('Action element type:', isActionElement.tagName);
-      console.log('Action element class:', isActionElement.className);
     }
-    console.log('=== END DEBUG ===');
   };
   
   return (
@@ -227,7 +201,6 @@ const EmptyState = ({ isSearching }) => (
 );
 
 const App = () => {
-  console.log('🚀 App component rendering...');
   const [tools, setTools] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [searchTerm, setSearchTerm] = React.useState('');

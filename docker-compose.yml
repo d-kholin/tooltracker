@@ -6,23 +6,7 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      # Mount a data directory for database and images, preserving app code
       - tooltracker_data:/app/data
-    environment:
-      - FLASK_ENV=production
-      - FLASK_DEBUG=0
-      - TOOLTRACKER_DB=/app/data/tooltracker.db
-      - UPLOAD_FOLDER=/app/data/images
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    # Optional: Add environment variables for configuration
-    # - DATABASE_URL=your_database_url
-    # - SECRET_KEY=your_secret_key
 
 volumes:
   tooltracker_data:

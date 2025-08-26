@@ -9,7 +9,7 @@ UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join('static', 'images')
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['SECRET_KEY'] = 'dev'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', os.urandom(24).hex())
 
 
 def get_conn():
