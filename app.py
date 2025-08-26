@@ -106,7 +106,20 @@ def init_db():
             indexes = c.fetchall()
             has_old_constraint = any('sqlite_autoindex_people_1' in str(idx) for idx in indexes)
             
-            if has_old_constraint:
+            # Also check table info to see if there's a unique constraint on name
+            c.execute("PRAGMA table_info(people)")
+            columns = c.fetchall()
+            name_column = next((col for col in columns if col[1] == 'name'), None)
+            if name_column and len(columns) >= 6 and name_column[5] == 1:  # Column 5 is unique constraint info
+                has_old_constraint = True
+            
+            # Check if the current constraint is correct
+            c.execute("PRAGMA index_list(people)")
+            current_indexes = c.fetchall()
+            has_correct_constraint = any('UNIQUE' in str(idx) and 'name' in str(idx) and 'created_by' in str(idx) for idx in current_indexes)
+            
+            if has_old_constraint or not has_correct_constraint:
+                print("Found old constraint or missing correct constraint - migrating to new schema...")
                 # Create a temporary table with the new schema
                 c.execute("""
                     CREATE TABLE people_new (
@@ -128,6 +141,8 @@ def init_db():
                 c.execute("ALTER TABLE people_new RENAME TO people")
                 
                 print("Successfully migrated people table for multi-user support")
+            else:
+                print("People table already has correct constraint")
         except sqlite3.OperationalError as e:
             print(f"Migration note: {e}")
             # If migration fails, the table will be created with new schema on next run
