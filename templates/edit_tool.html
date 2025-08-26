@@ -79,6 +79,44 @@
         </button>
       </div>
     </form>
+    
+    <!-- Delete Tool Section -->
+    <div class="mt-8 pt-6 border-t border-gray-200">
+      <div class="text-center">
+        <h3 class="text-lg font-medium text-gray-900 mb-2">Delete Tool</h3>
+        <p class="text-sm text-gray-600 mb-4">This action cannot be undone. The tool will be permanently removed.</p>
+        <button type="button" onclick="showDeleteConfirmation()" class="btn btn-danger">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+          </svg>
+          Delete Tool
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal hidden">
+  <div class="modal-overlay" onclick="hideDeleteConfirmation()"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">Delete Tool</h3>
+      <button type="button" onclick="hideDeleteConfirmation()" class="modal-close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="text-gray-700 mb-4">This action cannot be undone. This will permanently delete the tool <strong>"{{ tool.name }}"</strong> and all of its data.</p>
+      <p class="text-sm text-gray-600 mb-4">Please type <strong>"{{ tool.name }}"</strong> to confirm.</p>
+      <input type="text" id="deleteConfirmation" class="form-control w-full" placeholder="Type the tool name to confirm">
+    </div>
+    <div class="modal-footer">
+      <button type="button" onclick="hideDeleteConfirmation()" class="btn btn-secondary">Cancel</button>
+      <button type="button" onclick="confirmDelete()" class="btn btn-danger" disabled>Delete Tool</button>
+    </div>
   </div>
 </div>
 
@@ -99,6 +137,55 @@ document.getElementById('image-upload').addEventListener('change', function(e) {
     feedback.classList.remove('hidden');
   } else {
     feedback.classList.add('hidden');
+  }
+});
+
+// Delete confirmation functionality
+function showDeleteConfirmation() {
+  document.getElementById('deleteModal').classList.remove('hidden');
+  document.getElementById('deleteConfirmation').value = '';
+  document.getElementById('deleteConfirmation').focus();
+  updateDeleteButton();
+}
+
+function hideDeleteConfirmation() {
+  document.getElementById('deleteModal').classList.add('hidden');
+}
+
+function updateDeleteButton() {
+  const confirmationInput = document.getElementById('deleteConfirmation');
+  const deleteButton = document.querySelector('#deleteModal .btn-danger');
+  const toolName = '{{ tool.name }}';
+  
+  if (confirmationInput.value === toolName) {
+    deleteButton.disabled = false;
+    deleteButton.classList.remove('opacity-50', 'cursor-not-allowed');
+  } else {
+    deleteButton.disabled = true;
+    deleteButton.classList.add('opacity-50', 'cursor-not-allowed');
+  }
+}
+
+document.getElementById('deleteConfirmation').addEventListener('input', updateDeleteButton);
+
+function confirmDelete() {
+  const confirmationInput = document.getElementById('deleteConfirmation');
+  const toolName = '{{ tool.name }}';
+  
+  if (confirmationInput.value === toolName) {
+    // Create and submit the delete form
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/delete/{{ tool.id }}';
+    document.body.appendChild(form);
+    form.submit();
+  }
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    hideDeleteConfirmation();
   }
 });
 </script>
