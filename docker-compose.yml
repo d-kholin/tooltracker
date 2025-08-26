@@ -6,15 +6,13 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      # Only mount data directories, not the entire /app
+      # Mount a data directory for database and images, preserving app code
       - tooltracker_data:/app/data
-      - tooltracker_logs:/app/logs
-      # Don't mount /app/static - let the image files be used
     environment:
       - FLASK_ENV=production
       - FLASK_DEBUG=0
-      # Optional: Set custom database path if needed
-      # - TOOLTRACKER_DB=/app/data/tooltracker.db
+      - TOOLTRACKER_DB=/app/data/tooltracker.db
+      - UPLOAD_FOLDER=/app/data/images
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
@@ -28,6 +26,4 @@ services:
 
 volumes:
   tooltracker_data:
-    driver: local
-  tooltracker_logs:
     driver: local

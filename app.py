@@ -5,19 +5,29 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from werkzeug.utils import secure_filename
 
 DB_PATH = os.environ.get('TOOLTRACKER_DB', 'tooltracker.db')
+UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join('static', 'images'))
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = os.path.join('static', 'images')
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['SECRET_KEY'] = 'dev'
 
 
 def get_conn():
+    # Ensure the directory for the database exists
+    db_dir = os.path.dirname(DB_PATH)
+    if db_dir and not os.path.exists(db_dir):
+        os.makedirs(db_dir, exist_ok=True)
+    
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
 
 def init_db():
+    # Ensure the upload folder exists
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    
     with get_conn() as conn:
         c = conn.cursor()
         c.execute(
@@ -117,6 +127,7 @@ def add_tool():
             filename = secure_filename(image_file.filename)
             save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             image_file.save(save_path)
+            # Store relative path for database, but ensure it works with our new structure
             image_path = os.path.join('images', filename)
         with get_conn() as conn:
             c = conn.cursor()
@@ -347,6 +358,7 @@ def edit_tool(tool_id):
                 filename = secure_filename(image_file.filename)
                 save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 image_file.save(save_path)
+                # Store relative path for database, but ensure it works with our new structure
                 image_path = os.path.join('images', filename)
                 c.execute(
                     "UPDATE tools SET name=?, description=?, value=?, image_path=? WHERE id=?",
@@ -362,6 +374,14 @@ def edit_tool(tool_id):
         c.execute("SELECT * FROM tools WHERE id=?", (tool_id,))
         tool = c.fetchone()
     return render_template('edit_tool.html', tool=tool)
+
+
+@app.route('/data/images/<filename>')
+def serve_image(filename):
+    """Serve images from the data directory"""
+    from flask import send_from_directory
+    data_dir = os.path.dirname(UPLOAD_FOLDER)
+    return send_from_directory(data_dir, f'images/{filename}')
 
 
 if __name__ == '__main__':

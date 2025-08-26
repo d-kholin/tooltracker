@@ -86,7 +86,7 @@ const ToolCard = ({ tool }) => {
             {tool.image_path ? (
               <div class="flex-shrink-0">
                 <img 
-                  src={`/static/${tool.image_path}`} 
+                  src={`/data/${tool.image_path}`} 
                   alt={tool.name}
                   class="w-16 h-16 object-cover rounded-lg border border-gray-200 group-hover:border-brand transition-colors"
                 />

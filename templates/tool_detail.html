@@ -35,7 +35,7 @@
       <div>
         {% if tool.image_path %}
         <img 
-          src="{{ url_for('static', filename=tool.image_path) }}" 
+          src="/data/{{ tool.image_path }}" 
           alt="{{ tool.name }}"
           class="w-full h-64 object-cover rounded-lg border border-gray-200"
         >
