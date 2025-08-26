@@ -176,21 +176,53 @@ const ToolCard = ({ tool }) => {
   );
 };
 
-const EmptyState = () => (
-  <div class="text-center py-12">
-    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-      <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+const SearchBar = ({ searchTerm, onSearchChange }) => (
+  <div class="relative">
+    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+      <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
       </svg>
     </div>
-    <h3 class="text-lg font-medium text-gray-900 mb-2">No tools yet</h3>
-    <p class="text-gray-500 mb-4">Get started by adding your first tool to track.</p>
-          <a href="/add" class="btn btn-primary">
+    <input
+      type="text"
+      placeholder="Search tools by name, description, or borrower..."
+      value={searchTerm}
+      onChange={(e) => onSearchChange(e.target.value)}
+      class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-brand focus:border-brand sm:text-sm"
+    />
+  </div>
+);
+
+const EmptyState = ({ isSearching }) => (
+  <div class="text-center py-12">
+    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      {isSearching ? (
+        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+      ) : (
+        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+        </svg>
+      )}
+    </div>
+    <h3 class="text-lg font-medium text-gray-900 mb-2">
+      {isSearching ? 'No tools found' : 'No tools yet'}
+    </h3>
+    <p class="text-gray-500 mb-4">
+      {isSearching 
+        ? 'Try adjusting your search terms or browse all tools.' 
+        : 'Get started by adding your first tool to track.'
+      }
+    </p>
+    {!isSearching && (
+      <a href="/add" class="btn btn-primary">
         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
         </svg>
         Add Your First Tool
       </a>
+    )}
   </div>
 );
 
@@ -198,6 +230,7 @@ const App = () => {
   console.log('🚀 App component rendering...');
   const [tools, setTools] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
+  const [searchTerm, setSearchTerm] = React.useState('');
 
   React.useEffect(() => {
     fetch('/api/tools')
@@ -208,6 +241,18 @@ const App = () => {
       })
       .catch(() => setLoading(false));
   }, []);
+
+  // Filter tools based on search term
+  const filteredTools = tools.filter(tool => {
+    if (!searchTerm.trim()) return true;
+    
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      tool.name.toLowerCase().includes(searchLower) ||
+      (tool.description && tool.description.toLowerCase().includes(searchLower)) ||
+      (tool.borrower && tool.borrower.toLowerCase().includes(searchLower))
+    );
+  });
 
   if (loading) {
     return (
@@ -232,11 +277,24 @@ const App = () => {
         </a>
       </div>
       
-      {tools.length === 0 ? (
-        <EmptyState />
+      {/* Search Bar */}
+      <SearchBar 
+        searchTerm={searchTerm} 
+        onSearchChange={setSearchTerm} 
+      />
+      
+      {/* Results count */}
+      {searchTerm && (
+        <div class="text-sm text-gray-600">
+          Found {filteredTools.length} tool{filteredTools.length !== 1 ? 's' : ''} matching "{searchTerm}"
+        </div>
+      )}
+      
+      {filteredTools.length === 0 ? (
+        <EmptyState isSearching={!!searchTerm} />
       ) : (
         <div class="space-y-4">
-          {tools.map(tool => (
+          {filteredTools.map(tool => (
             <ToolCard key={tool.id} tool={tool} />
           ))}
         </div>
