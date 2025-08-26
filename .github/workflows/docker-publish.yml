@@ -2,7 +2,7 @@ name: Build and Publish Docker Container
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "dev" ]
     tags: [ 'v*.*.*' ]
   pull_request:
     branches: [ "main" ]
@@ -12,10 +12,10 @@ env:
   IMAGE_NAME: ${{ github.repository }}/tooltracker
 
 jobs:
-  # Job for versioned releases (main branch + version tags)
+  # Job for versioned releases (version tags only)
   release-build:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: read
       packages: write
@@ -64,8 +64,8 @@ jobs:
       run: |
         echo "Generated tags: ${{ steps.meta.outputs.tags }}"
         echo "Generated labels: ${{ steps.meta.outputs.labels }}"
-        echo "Is default branch: ${{ github.ref == 'refs/heads/main' }}"
         echo "Current ref: ${{ github.ref }}"
+        echo "Tag name: ${{ github.ref_name }}"
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
