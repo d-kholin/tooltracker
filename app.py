@@ -775,7 +775,7 @@ def report():
             """
             SELECT p.id AS person_id, p.name, COUNT(l.id) AS count
             FROM people p
-            LEFT JOIN loans l ON p.id = l.person_id AND l.returned_on IS NULL
+            JOIN loans l ON p.id = l.person_id AND l.returned_on IS NULL
             WHERE p.created_by = ?
             GROUP BY p.id, p.name
             ORDER BY p.name
