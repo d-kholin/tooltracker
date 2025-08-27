@@ -467,6 +467,25 @@ def api_tools():
     return jsonify(tools)
 
 
+@app.route('/api/brands', methods=['GET'])
+@auth_required
+def api_brands():
+    """Get all unique brands for the current user's tools"""
+    with get_conn() as conn:
+        c = conn.cursor()
+        c.execute(
+            """
+            SELECT DISTINCT brand 
+            FROM tools 
+            WHERE created_by = ? AND brand IS NOT NULL AND brand != ''
+            ORDER BY brand
+            """,
+            (current_user.id,)
+        )
+        brands = [row['brand'] for row in c.fetchall()]
+    return jsonify(brands)
+
+
 @app.route('/add', methods=['GET', 'POST'])
 @auth_required
 def add_tool():

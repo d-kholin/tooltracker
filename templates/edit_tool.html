@@ -23,7 +23,31 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <label class="form-label">Brand</label>
-          <input type="text" class="form-control w-full" name="brand" value="{{ tool.brand or '' }}" placeholder="e.g., DeWalt, Milwaukee, Stanley">
+          <div class="relative">
+            <input 
+              type="text" 
+              id="brand-input" 
+              class="form-control w-full pr-10" 
+              name="brand" 
+              value="{{ tool.brand or '' }}"
+              placeholder="e.g., DeWalt, Milwaukee, Stanley"
+              autocomplete="off"
+            >
+            <button 
+              type="button" 
+              id="brand-dropdown-toggle" 
+              class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              onclick="toggleBrandDropdown()"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            <div id="brand-dropdown" class="hidden absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+              <!-- Brand options will be populated by JavaScript -->
+            </div>
+          </div>
+          <p class="text-sm text-gray-500 mt-1">Select from common brands for colored badges, or type your own custom brand name.</p>
         </div>
         
         <div>
@@ -138,6 +162,82 @@
 </div>
 
 <script>
+// Predefined brand list for the dropdown
+const predefinedBrands = [
+  'DeWalt', 'SawStop', 'Bosch', 'Mastercraft', 'Rigid', 'Milwaukee', 'Makita', 
+  'Festool', 'Hilti', 'Snap-on', 'Craftsman', 'Stanley', 'Black+Decker', 
+  'Porter-Cable', 'Hitachi', 'Metabo', 'Ryobi', 'Kobalt', 'Husky', 'Werner', 
+  'Little Giant', 'Jet', 'Powermatic', 'Delta', 'Grizzly', 'Shop Fox', 'WEN', 
+  'Skil', 'Dremel', 'Bostitch', 'Paslode', 'Senco'
+];
+
+// Brand dropdown functionality
+let brandDropdownVisible = false;
+
+function toggleBrandDropdown() {
+  const dropdown = document.getElementById('brand-dropdown');
+  const input = document.getElementById('brand-input');
+  
+  if (brandDropdownVisible) {
+    hideBrandDropdown();
+  } else {
+    showBrandDropdown();
+    input.focus();
+  }
+}
+
+function showBrandDropdown() {
+  const dropdown = document.getElementById('brand-dropdown');
+  const input = document.getElementById('brand-input');
+  
+  // Filter brands based on current input
+  const filterValue = input.value.toLowerCase();
+  const filteredBrands = predefinedBrands.filter(brand => 
+    brand.toLowerCase().includes(filterValue)
+  );
+  
+  // Populate dropdown
+  dropdown.innerHTML = '';
+  
+  if (filteredBrands.length === 0) {
+    dropdown.innerHTML = '<div class="px-4 py-2 text-sm text-gray-500">No brands found</div>';
+  } else {
+    filteredBrands.forEach(brand => {
+      const option = document.createElement('div');
+      option.className = 'brand-dropdown-option predetermined';
+      option.textContent = brand;
+      option.onclick = () => selectBrand(brand);
+      dropdown.appendChild(option);
+    });
+    
+    // Add custom brand option
+    const customOption = document.createElement('div');
+    customOption.className = 'brand-dropdown-option custom';
+    customOption.textContent = 'Type custom brand...';
+    customOption.onclick = () => {
+      input.focus();
+      hideBrandDropdown();
+    };
+    dropdown.appendChild(customOption);
+  }
+  
+  dropdown.classList.remove('hidden');
+  brandDropdownVisible = true;
+}
+
+function hideBrandDropdown() {
+  const dropdown = document.getElementById('brand-dropdown');
+  dropdown.classList.add('hidden');
+  brandDropdownVisible = false;
+}
+
+function selectBrand(brand) {
+  const input = document.getElementById('brand-input');
+  input.value = brand;
+  hideBrandDropdown();
+}
+
+// Image upload functionality
 document.getElementById('image-upload').addEventListener('change', function(e) {
   const file = e.target.files[0];
   const feedback = document.getElementById('file-feedback');
@@ -154,6 +254,37 @@ document.getElementById('image-upload').addEventListener('change', function(e) {
     feedback.classList.remove('hidden');
   } else {
     feedback.classList.add('hidden');
+  }
+});
+
+// Brand input event listeners
+document.getElementById('brand-input').addEventListener('input', function(e) {
+  if (brandDropdownVisible) {
+    showBrandDropdown();
+  }
+});
+
+document.getElementById('brand-input').addEventListener('focus', function(e) {
+  if (this.value.trim() === '') {
+    showBrandDropdown();
+  }
+});
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+  const brandInput = document.getElementById('brand-input');
+  const brandDropdown = document.getElementById('brand-dropdown');
+  const brandToggle = document.getElementById('brand-dropdown-toggle');
+  
+  if (!brandInput.contains(e.target) && !brandDropdown.contains(e.target) && !brandToggle.contains(e.target)) {
+    hideBrandDropdown();
+  }
+});
+
+// Close dropdown on escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && brandDropdownVisible) {
+    hideBrandDropdown();
   }
 });
 

@@ -62,6 +62,37 @@ h1 {
   font-size: 0.875rem;
 }
 
+/* Brand Dropdown */
+.brand-dropdown-option {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  color: #374151;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.brand-dropdown-option:hover {
+  background-color: #f3f4f6;
+}
+
+.brand-dropdown-option.predetermined {
+  position: relative;
+}
+
+.brand-dropdown-option.predetermined::after {
+  content: "✓";
+  position: absolute;
+  right: 1rem;
+  color: #10b981;
+  font-weight: bold;
+  font-size: 0.75rem;
+}
+
+.brand-dropdown-option.custom {
+  color: #6b7280;
+  font-style: italic;
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
