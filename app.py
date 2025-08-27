@@ -829,7 +829,7 @@ def delete_person(person_id):
 def person_detail(person_id):
     with get_conn() as conn:
         c = conn.cursor()
-        c.execute("SELECT name, contact_info FROM people WHERE id=? AND created_by=?", (person_id, current_user.id))
+        c.execute("SELECT id, name, contact_info FROM people WHERE id=? AND created_by=?", (person_id, current_user.id))
         person = c.fetchone()
         if not person:
             return redirect(url_for('people'))
