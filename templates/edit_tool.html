@@ -17,7 +17,24 @@
       
       <div>
         <label class="form-label">Description</label>
-        <textarea class="form-control w-full" name="description" rows="3" placeholder="Brief description of the tool, brand, model, etc.">{{ tool.description or '' }}</textarea>
+        <textarea class="form-control w-full" name="description" rows="3" placeholder="Brief description of the tool, features, etc.">{{ tool.description or '' }}</textarea>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="form-label">Brand</label>
+          <input type="text" class="form-control w-full" name="brand" value="{{ tool.brand or '' }}" placeholder="e.g., DeWalt, Milwaukee, Stanley">
+        </div>
+        
+        <div>
+          <label class="form-label">Model Number</label>
+          <input type="text" class="form-control w-full" name="model_number" value="{{ tool.model_number or '' }}" placeholder="e.g., DCD777C2, 2554-20">
+        </div>
+        
+        <div>
+          <label class="form-label">Serial Number</label>
+          <input type="text" class="form-control w-full" name="serial_number" value="{{ tool.serial_number or '' }}" placeholder="e.g., SN123456789">
+        </div>
       </div>
       
       <div>

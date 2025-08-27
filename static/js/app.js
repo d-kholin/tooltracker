@@ -159,7 +159,7 @@ const SearchBar = ({ searchTerm, onSearchChange }) => (
     </div>
     <input
       type="text"
-      placeholder="Search tools by name, description, or borrower..."
+              placeholder="Search tools by name, description, brand, model, serial number, or borrower..."
       value={searchTerm}
       onChange={(e) => onSearchChange(e.target.value)}
       class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-brand focus:border-brand sm:text-sm"
@@ -223,6 +223,9 @@ const App = () => {
     return (
       tool.name.toLowerCase().includes(searchLower) ||
       (tool.description && tool.description.toLowerCase().includes(searchLower)) ||
+      (tool.brand && tool.brand.toLowerCase().includes(searchLower)) ||
+      (tool.model_number && tool.model_number.toLowerCase().includes(searchLower)) ||
+      (tool.serial_number && tool.serial_number.toLowerCase().includes(searchLower)) ||
       (tool.borrower && tool.borrower.toLowerCase().includes(searchLower))
     );
   });
