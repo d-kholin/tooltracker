@@ -2,7 +2,7 @@ name: Build and Publish Docker Container
 
 on:
   push:
-    branches: [ "dev" ]
+    branches-ignore: [ "main" ]
     tags: [ 'v*.*.*' ]
   pull_request:
     branches: [ "main" ]
@@ -82,10 +82,10 @@ jobs:
           VCS_REF=${{ github.sha }}
           CACHE_BUST=${{ github.sha }}
 
-  # Job for nightly builds (dev branch)
+  # Job for nightly builds (any branch other than main)
   nightly-build:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    if: github.event_name == 'push' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: read
       packages: write
@@ -118,7 +118,7 @@ jobs:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
           type=raw,value=nightly
-          type=raw,value=dev-${{ github.sha }}
+          type=raw,value=${{ github.ref_name }}-${{ github.sha }}
         labels: |
           org.opencontainers.image.title=tooltracker
           org.opencontainers.image.description=A simple web app to track my tools, and where I've lent them out! (Nightly Build)
