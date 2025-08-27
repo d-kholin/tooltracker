@@ -139,11 +139,7 @@
               {% endif %}
             </td>
             <td class="text-gray-600">
-              {% if loan.returned_on %}
-                {{ loan.duration }}
-              {% else %}
-                <span class="text-orange-600 font-medium">-</span>
-              {% endif %}
+              {{ loan.duration }}
             </td>
             <td class="text-gray-600">
               <a href="/edit_loan/{{ loan.id }}" class="btn btn-sm btn-secondary">

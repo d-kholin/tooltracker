@@ -708,15 +708,25 @@ def person_detail(person_id):
         loans = []
         for loan in loans_raw:
             loan_dict = dict(loan)
-            if loan_dict['returned_on'] and loan_dict['lent_on']:
+            if loan_dict['lent_on']:
                 try:
                     lent_date = datetime.datetime.strptime(loan_dict['lent_on'], '%Y-%m-%d').date()
-                    returned_date = datetime.datetime.strptime(loan_dict['returned_on'], '%Y-%m-%d').date()
-                    duration_days = (returned_date - lent_date).days
-                    if duration_days == 0:
-                        loan_dict['duration'] = '1 day'
+                    if loan_dict['returned_on']:
+                        # Calculate duration for returned tools
+                        returned_date = datetime.datetime.strptime(loan_dict['returned_on'], '%Y-%m-%d').date()
+                        duration_days = (returned_date - lent_date).days
+                        if duration_days == 0:
+                            loan_dict['duration'] = '1 day'
+                        else:
+                            loan_dict['duration'] = f'{duration_days + 1} days'
                     else:
-                        loan_dict['duration'] = f'{duration_days + 1} days'
+                        # Calculate current duration for tools still out
+                        current_date = datetime.date.today()
+                        duration_days = (current_date - lent_date).days
+                        if duration_days == 0:
+                            loan_dict['duration'] = '1 day (currently out)'
+                        else:
+                            loan_dict['duration'] = f'{duration_days + 1} days (currently out)'
                 except (ValueError, TypeError):
                     loan_dict['duration'] = 'Unknown'
             else:
@@ -816,15 +826,25 @@ def tool_detail(tool_id):
         loans = []
         for loan in loans_raw:
             loan_dict = dict(loan)
-            if loan_dict['returned_on'] and loan_dict['lent_on']:
+            if loan_dict['lent_on']:
                 try:
                     lent_date = datetime.datetime.strptime(loan_dict['lent_on'], '%Y-%m-%d').date()
-                    returned_date = datetime.datetime.strptime(loan_dict['returned_on'], '%Y-%m-%d').date()
-                    duration_days = (returned_date - lent_date).days
-                    if duration_days == 0:
-                        loan_dict['duration'] = '1 day'
+                    if loan_dict['returned_on']:
+                        # Calculate duration for returned tools
+                        returned_date = datetime.datetime.strptime(loan_dict['returned_on'], '%Y-%m-%d').date()
+                        duration_days = (returned_date - lent_date).days
+                        if duration_days == 0:
+                            loan_dict['duration'] = '1 day'
+                        else:
+                            loan_dict['duration'] = f'{duration_days + 1} days'
                     else:
-                        loan_dict['duration'] = f'{duration_days + 1} days'
+                        # Calculate current duration for tools still out
+                        current_date = datetime.date.today()
+                        duration_days = (current_date - lent_date).days
+                        if duration_days == 0:
+                            loan_dict['duration'] = '1 day (currently out)'
+                        else:
+                            loan_dict['duration'] = f'{duration_days + 1} days (currently out)'
                 except (ValueError, TypeError):
                     loan_dict['duration'] = 'Unknown'
             else:
