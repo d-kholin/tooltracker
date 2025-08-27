@@ -786,6 +786,125 @@ def report():
     return render_template('report.html', rows=rows)
 
 
+@app.route('/report/overdue')
+@auth_required
+def overdue_report():
+    with get_conn() as conn:
+        c = conn.cursor()
+        # Get tools out longer than 30 days
+        c.execute(
+            """
+            SELECT t.id, t.name, t.description, t.value, t.image_path, 
+                   p.name AS borrower, p.contact_info, l.lent_on,
+                   (julianday('now') - julianday(l.lent_on)) AS days_out
+            FROM tools t
+            JOIN loans l ON t.id = l.tool_id AND l.returned_on IS NULL
+            JOIN people p ON l.person_id = p.id
+            WHERE t.created_by = ? AND (julianday('now') - julianday(l.lent_on)) > 30
+            ORDER BY days_out DESC
+            """,
+            (current_user.id,)
+        )
+        overdue_tools = c.fetchall()
+        
+        # Calculate summary statistics
+        total_overdue = len(overdue_tools)
+        total_value_overdue = sum(tool['value'] or 0 for tool in overdue_tools)
+        avg_days_overdue = sum(tool['days_out'] for tool in overdue_tools) / total_overdue if total_overdue > 0 else 0
+        
+    return render_template('overdue_report.html', 
+                         overdue_tools=overdue_tools,
+                         total_overdue=total_overdue,
+                         total_value_overdue=total_value_overdue,
+                         avg_days_overdue=round(avg_days_overdue, 1))
+
+
+@app.route('/report/financial')
+@auth_required
+def financial_report():
+    with get_conn() as conn:
+        c = conn.cursor()
+        
+        # Get total inventory value
+        c.execute(
+            """
+            SELECT COUNT(*) as total_tools, 
+                   COALESCE(SUM(value), 0) as total_value,
+                   COALESCE(AVG(value), 0) as avg_value
+            FROM tools 
+            WHERE created_by = ?
+            """,
+            (current_user.id,)
+        )
+        inventory_stats = c.fetchone()
+        
+        # Get value of tools currently lent out
+        c.execute(
+            """
+            SELECT COUNT(*) as tools_lent_out,
+                   COALESCE(SUM(t.value), 0) as value_lent_out
+            FROM tools t
+            JOIN loans l ON t.id = l.tool_id AND l.returned_on IS NULL
+            WHERE t.created_by = ?
+            """,
+            (current_user.id,)
+        )
+        lent_stats = c.fetchone()
+        
+        # Get value of tools available (not lent out)
+        available_value = inventory_stats['total_value'] - lent_stats['value_lent_out']
+        available_tools = inventory_stats['total_tools'] - lent_stats['tools_lent_out']
+        
+        # Get tools by value ranges for distribution analysis
+        c.execute(
+            """
+            SELECT 
+                CASE 
+                    WHEN value IS NULL OR value = 0 THEN 'No Value Set'
+                    WHEN value <= 50 THEN '$0 - $50'
+                    WHEN value <= 100 THEN '$51 - $100'
+                    WHEN value <= 250 THEN '$101 - $250'
+                    WHEN value <= 500 THEN '$251 - $500'
+                    WHEN value <= 1000 THEN '$501 - $1000'
+                    ELSE '$1000+'
+                END as value_range,
+                COUNT(*) as count,
+                COALESCE(SUM(value), 0) as total_value
+            FROM tools 
+            WHERE created_by = ?
+            GROUP BY 
+                CASE 
+                    WHEN value IS NULL OR value = 0 THEN 'No Value Set'
+                    WHEN value <= 50 THEN '$0 - $50'
+                    WHEN value <= 100 THEN '$51 - $100'
+                    WHEN value <= 250 THEN '$101 - $250'
+                    WHEN value <= 500 THEN '$251 - $500'
+                    WHEN value <= 1000 THEN '$501 - $1000'
+                    ELSE '$1000+'
+                END
+            ORDER BY 
+                CASE value_range
+                    WHEN 'No Value Set' THEN 0
+                    WHEN '$0 - $50' THEN 1
+                    WHEN '$51 - $100' THEN 2
+                    WHEN '$101 - $250' THEN 3
+                    WHEN '$251 - $500' THEN 4
+                    WHEN '$501 - $1000' THEN 5
+                    ELSE 6
+                END
+            """,
+            (current_user.id,)
+        )
+        value_distribution = c.fetchall()
+        
+    return render_template('financial_report.html',
+                         inventory_stats=inventory_stats,
+                         lent_stats=lent_stats,
+                         available_value=available_value,
+                         available_tools=available_tools,
+                         value_distribution=value_distribution)
+
+
 
 
 
