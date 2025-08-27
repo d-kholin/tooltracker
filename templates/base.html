@@ -49,6 +49,7 @@
           <a href="{{ url_for('index') }}" class="text-gray-600 hover:text-brand font-medium transition-colors">Tools</a>
           <a href="{{ url_for('people') }}" class="text-gray-600 hover:text-brand font-medium transition-colors">People</a>
           <a href="{{ url_for('report') }}" class="text-gray-600 hover:text-brand font-medium transition-colors">Report</a>
+          <a href="{{ url_for('duplicates') }}" class="text-gray-600 hover:text-brand font-medium transition-colors">Duplicates</a>
         </nav>
 
         <!-- User menu and authentication -->
@@ -92,6 +93,7 @@
           <a href="{{ url_for('index') }}" class="block px-3 py-2 text-gray-600 hover:text-brand font-medium">Tools</a>
           <a href="{{ url_for('people') }}" class="block px-3 py-2 text-gray-600 hover:text-brand font-medium">People</a>
           <a href="{{ url_for('report') }}" class="block px-3 py-2 text-gray-600 hover:text-brand font-medium">Report</a>
+          <a href="{{ url_for('duplicates') }}" class="block px-3 py-2 text-gray-600 hover:text-brand font-medium">Duplicates</a>
           
           {% if current_user.is_authenticated %}
             <div class="border-t border-gray-200 pt-2 mt-2">

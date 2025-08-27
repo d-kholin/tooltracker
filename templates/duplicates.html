@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% block title %}Duplicates - Tool Tracker{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900">Potential Duplicates</h1>
+      <p class="text-gray-600 mt-2">Identify and clean up duplicate tools and people across users.</p>
+    </div>
+    <a href="{{ url_for('index') }}" class="btn btn-outline">
+      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+      </svg>
+      Back to Tools
+    </a>
+  </div>
+</div>
+
+<!-- Duplicate Tools -->
+{% if duplicate_tools %}
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900">Duplicate Tools</h2>
+    <p class="text-sm text-gray-600 mt-1">Tools with the same name but different owners</p>
+  </div>
+  
+  <div class="table-responsive">
+    <table class="table w-full">
+      <thead>
+        <tr>
+          <th>Tool Name</th>
+          <th>Owners</th>
+          <th>Count</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for tool in duplicate_tools %}
+        <tr class="hover:bg-gray-50">
+          <td class="font-medium text-gray-900">{{ tool.name }}</td>
+          <td>
+            <div class="flex flex-wrap gap-1">
+              {% for owner in tool.all_owners.split(',') %}
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
+                  {% if owner == current_user.id %}
+                    bg-green-100 text-green-800
+                  {% else %}
+                    bg-gray-100 text-gray-800
+                  {% endif %}">
+                  {% if owner == current_user.id %}
+                    You
+                  {% else %}
+                    User {{ owner }}
+                  {% endif %}
+                </span>
+              {% endfor %}
+            </div>
+          </td>
+          <td class="text-gray-600">{{ tool.count }}</td>
+          <td>
+            <a href="{{ url_for('index') }}?search={{ tool.name }}" class="btn btn-sm btn-secondary">
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+              </svg>
+              View Tools
+            </a>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Duplicate People -->
+{% if duplicate_people %}
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900">Duplicate People</h2>
+    <p class="text-sm text-gray-600 mt-1">People with the same name but different owners</p>
+  </div>
+  
+  <div class="table-responsive">
+    <table class="table w-full">
+      <thead>
+        <tr>
+          <th>Person Name</th>
+          <th>Owners</th>
+          <th>Count</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for person in duplicate_people %}
+        <tr class="hover:bg-gray-50">
+          <td class="font-medium text-gray-900">{{ person.name }}</td>
+          <td>
+            <div class="flex flex-wrap gap-1">
+              {% for owner in person.all_owners.split(',') %}
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
+                  {% if owner == current_user.id %}
+                    bg-green-100 text-green-800
+                  {% else %}
+                    bg-gray-100 text-gray-800
+                  {% endif %}">
+                  {% if owner == current_user.id %}
+                    You
+                  {% else %}
+                    User {{ owner }}
+                  {% endif %}
+                </span>
+              {% endfor %}
+            </div>
+          </td>
+          <td class="text-gray-600">{{ person.count }}</td>
+          <td>
+            <a href="{{ url_for('people') }}?search={{ person.name }}" class="btn btn-sm btn-secondary">
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+              </svg>
+              View People
+            </a>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- No Duplicates Found -->
+{% if not duplicate_tools and not duplicate_people %}
+<div class="text-center py-12">
+  <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+    <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+    </svg>
+  </div>
+  <h3 class="text-lg font-medium text-gray-900 mb-2">No Duplicates Found</h3>
+  <p class="text-gray-500">Great! Your database appears to be clean with no duplicate tools or people across users.</p>
+</div>
+{% endif %}
+
+<!-- Help Section -->
+<div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-8">
+  <div class="flex">
+    <div class="flex-shrink-0">
+      <svg class="h-5 w-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+    </div>
+    <div class="ml-3">
+      <h3 class="text-sm font-medium text-blue-800">How to Handle Duplicates</h3>
+      <div class="mt-2 text-sm text-blue-700">
+        <ul class="list-disc list-inside space-y-1">
+          <li><strong>Tools:</strong> Review each duplicate and decide if they're truly the same tool or different items with the same name.</li>
+          <li><strong>People:</strong> Check if these are the same person or different people with the same name.</li>
+          <li><strong>Cleanup:</strong> Use the Edit functions to rename or delete duplicates as needed.</li>
+          <li><strong>Loans:</strong> Ensure loan records are properly associated with the correct tools and people.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
