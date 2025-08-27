@@ -140,7 +140,7 @@
           <td>
             <div class="flex items-center">
               {% if tool.image_path %}
-              <img src="{{ url_for('static', filename='images/' + tool.image_path) }}" 
+              <img src="/data/{{ tool.image_path }}" 
                    alt="{{ tool.name }}" class="w-10 h-10 rounded-lg object-cover mr-3">
               {% else %}
               <div class="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center mr-3">
