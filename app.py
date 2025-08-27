@@ -156,7 +156,8 @@ def migrate_existing_database():
             if 'idx_people_name_user' in idx[1] or 'people_name_user' in idx[1]:
                 print(f"⚠️  Found problematic constraint: {idx[1]} (type: {idx[2]})")
                 # Check what this constraint is enforcing
-                c.execute("PRAGMA index_info(?)", (idx[1],))
+                # Note: PRAGMA statements don't support parameterized queries
+                c.execute(f"PRAGMA index_info({idx[1]})")
                 index_info = c.fetchall()
                 print(f"    Index columns: {[col[2] for col in index_info]}")
         
@@ -202,6 +203,29 @@ def migrate_existing_database():
         
         print(f"Found {len(null_duplicates)} duplicate names without created_by")
         print(f"Found {len(all_duplicates)} total duplicate names")
+        
+        # CRITICAL: Check if we have any records that would violate the unique constraint
+        # This happens when we have records with the same name but different created_by values
+        c.execute("""
+            SELECT name, COUNT(*) as count 
+            FROM people 
+            WHERE created_by IS NOT NULL 
+            GROUP BY name 
+            HAVING count > 1
+        """)
+        constraint_violations = c.fetchall()
+        
+        if constraint_violations:
+            print(f"⚠️  Found {len(constraint_violations)} names that would violate unique constraint:")
+            for violation in constraint_violations:
+                name = violation[0]
+                print(f"    - {name} appears {violation[1]} times with different created_by values")
+                
+                # Get all records with this name to see the conflict
+                c.execute("SELECT id, name, created_by FROM people WHERE name = ? ORDER BY id", (name,))
+                conflicting_records = c.fetchall()
+                for record in conflicting_records:
+                    print(f"      Record {record[0]}: {record[1]} (created_by: {record[2]})")
         
         # Handle duplicates by making names unique per user
         if null_duplicates:
@@ -255,6 +279,28 @@ def migrate_existing_database():
                                 unique_name = f"{name}_{i+1}"
                                 c.execute("UPDATE people SET name = ? WHERE id = ?", (unique_name, record['id']))
                                 print(f"    Renamed to {unique_name} (ID: {record['id']})")
+        
+        # CRITICAL: Resolve constraint violations by making names unique
+        if constraint_violations:
+            print("Resolving constraint violations...")
+            for violation in constraint_violations:
+                name = violation[0]
+                print(f"  Resolving constraint violation for '{name}'...")
+                
+                # Get all records with this name
+                c.execute("SELECT id, name, created_by FROM people WHERE name = ? ORDER BY id", (name,))
+                conflicting_records = c.fetchall()
+                
+                # Keep the first record, rename others to be unique
+                for i, record in enumerate(conflicting_records):
+                    if i == 0:
+                        # First record keeps the original name
+                        print(f"    Keeping {name} (ID: {record[0]}) with created_by: {record[2]}")
+                    else:
+                        # Subsequent records get unique names
+                        unique_name = f"{name}_conflict_{i+1}"
+                        c.execute("UPDATE people SET name = ? WHERE id = ?", (unique_name, record[0]))
+                        print(f"    Renamed to {unique_name} (ID: {record[0]}) to resolve constraint violation")
         
         # Now handle any remaining records without created_by
         c.execute("SELECT COUNT(*) FROM people WHERE created_by IS NULL")
