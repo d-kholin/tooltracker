@@ -136,7 +136,7 @@ def migrate_existing_database():
     with get_conn() as conn:
         c = conn.cursor()
         
-        # Check if the people table exists and has the old constraint
+        # Check if the people table exists
         c.execute("PRAGMA table_info(people)")
         table_info = c.fetchall()
         
@@ -151,23 +151,6 @@ def migrate_existing_database():
         indexes = c.fetchall()
         print(f"Current indexes on people table: {[idx[1] for idx in indexes]}")
         
-        # Look for the old auto-generated unique index on name
-        old_index_found = False
-        for index in indexes:
-            if index[1] == 'sqlite_autoindex_people_1':
-                old_index_found = True
-                print(f"Found old auto-generated unique index: {index[1]}")
-                break
-        
-        if old_index_found:
-            print("Removing old global unique constraint on people.name...")
-            try:
-                # Drop the old auto-generated unique index
-                c.execute("DROP INDEX sqlite_autoindex_people_1")
-                print("Successfully removed old unique constraint")
-            except sqlite3.OperationalError as e:
-                print(f"Warning: Could not remove old constraint: {e}")
-        
         # Check if we need to add the created_by column
         has_created_by = any(col[1] == 'created_by' for col in table_info)
         if not has_created_by:
@@ -178,32 +161,81 @@ def migrate_existing_database():
             except sqlite3.OperationalError as e:
                 print(f"Warning: Could not add created_by column: {e}")
         
-        # Create the new composite unique constraint
-        print("Creating new composite unique constraint on (name, created_by)...")
-        try:
-            c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_people_name_user ON people (name, created_by)")
-            print("Successfully created new composite unique constraint")
-        except sqlite3.OperationalError as e:
-            print(f"Warning: Could not create new constraint: {e}")
+        # Handle the case where we have duplicate names that would violate constraints
+        print("Checking for duplicate names that need handling...")
+        c.execute("SELECT name, COUNT(*) as count FROM people WHERE created_by IS NULL GROUP BY name HAVING count > 1")
+        duplicates = c.fetchall()
         
-        # Check if we need to update existing records that don't have created_by set
-        c.execute("SELECT COUNT(*) FROM people WHERE created_by IS NULL")
-        null_created_by_count = c.fetchone()[0]
-        
-        if null_created_by_count > 0:
-            print(f"Found {null_created_by_count} people records without created_by, updating...")
+        if duplicates:
+            print(f"Found {len(duplicates)} duplicate names that need special handling:")
+            for dup in duplicates:
+                print(f"  - {dup['name']} appears {dup['count']} times")
             
             # Get all users to assign records to
             c.execute("SELECT id FROM users")
             users = c.fetchall()
             
             if users:
-                # Assign all orphaned people to the first user (you might want to customize this)
                 default_user_id = users[0][0]
-                c.execute("UPDATE people SET created_by = ? WHERE created_by IS NULL", (default_user_id,))
-                print(f"Assigned {null_created_by_count} people records to user {default_user_id}")
+                
+                # Handle duplicates by making names unique per user
+                for dup in duplicates:
+                    name = dup['name']
+                    count = dup['count']
+                    
+                    # Get all records with this name
+                    c.execute("SELECT id FROM people WHERE name = ? AND created_by IS NULL ORDER BY id", (name,))
+                    duplicate_records = c.fetchall()
+                    
+                    # Assign first record to default user, make others unique
+                    for i, record in enumerate(duplicate_records):
+                        if i == 0:
+                            # First record gets the original name
+                            c.execute("UPDATE people SET created_by = ? WHERE id = ?", (default_user_id, record['id']))
+                            print(f"  Assigned {name} (ID: {record['id']}) to user {default_user_id}")
+                        else:
+                            # Subsequent records get a unique name
+                            unique_name = f"{name}_{i+1}"
+                            c.execute("UPDATE people SET name = ?, created_by = ? WHERE id = ?", (unique_name, default_user_id, record['id']))
+                            print(f"  Renamed duplicate to {unique_name} (ID: {record['id']}) and assigned to user {default_user_id}")
+                
+                # Now handle any remaining records without created_by
+                c.execute("SELECT COUNT(*) FROM people WHERE created_by IS NULL")
+                remaining_null_count = c.fetchone()[0]
+                
+                if remaining_null_count > 0:
+                    print(f"Updating {remaining_null_count} remaining records...")
+                    c.execute("UPDATE people SET created_by = ? WHERE created_by IS NULL", (default_user_id,))
+                    print(f"Assigned {remaining_null_count} remaining people records to user {default_user_id}")
             else:
                 print("Warning: No users found, cannot assign orphaned people records")
+        else:
+            # No duplicates, simple update
+            c.execute("SELECT COUNT(*) FROM people WHERE created_by IS NULL")
+            null_created_by_count = c.fetchone()[0]
+            
+            if null_created_by_count > 0:
+                print(f"Found {null_created_by_count} people records without created_by, updating...")
+                
+                # Get all users to assign records to
+                c.execute("SELECT id FROM users")
+                users = c.fetchall()
+                
+                if users:
+                    default_user_id = users[0][0]
+                    c.execute("UPDATE people SET created_by = ? WHERE created_by IS NULL", (default_user_id,))
+                    print(f"Assigned {null_created_by_count} people records to user {default_user_id}")
+                else:
+                    print("Warning: No users found, cannot assign orphaned people records")
+        
+        # Try to create the composite unique constraint
+        print("Creating composite unique constraint on (name, created_by)...")
+        try:
+            c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_people_name_user ON people (name, created_by)")
+            print("Successfully created composite unique constraint")
+        except sqlite3.OperationalError as e:
+            print(f"Warning: Could not create composite constraint: {e}")
+            print("This may be due to existing constraints - the table will work but without per-user name uniqueness")
         
         # Verify the migration
         c.execute("PRAGMA index_list(people)")
@@ -215,7 +247,8 @@ def migrate_existing_database():
         if new_constraint_exists:
             print("✅ Migration completed successfully!")
         else:
-            print("❌ Migration may have failed - new constraint not found")
+            print("⚠️  Migration completed but composite constraint could not be created")
+            print("The table will work but may not enforce per-user name uniqueness")
         
         conn.commit()
 
@@ -509,6 +542,12 @@ def add_person():
         
         with get_conn() as conn:
             c = conn.cursor()
+            
+            # Debug: Check what people already exist for this user
+            c.execute("SELECT id, name FROM people WHERE created_by = ?", (current_user.id,))
+            existing_people = c.fetchall()
+            print(f"Existing people for user {current_user.id}: {[p['name'] for p in existing_people]}")
+            
             try:
                 c.execute(
                     "INSERT INTO people (name, contact_info, created_by) VALUES (?, ?, ?)",
@@ -516,9 +555,14 @@ def add_person():
                 )
                 conn.commit()
                 flash('Person added successfully!')
+                print(f"Successfully added person: {name}")
                 return redirect(url_for('people'))
-            except sqlite3.IntegrityError:
+            except sqlite3.IntegrityError as e:
+                print(f"IntegrityError when adding person: {e}")
                 flash('Person already exists')
+            except Exception as e:
+                print(f"Unexpected error when adding person: {e}")
+                flash(f'Error adding person: {str(e)}')
         return render_template('add_person.html')
     return render_template('add_person.html')
 
