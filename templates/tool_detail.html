@@ -69,6 +69,29 @@
         </div>
         {% endif %}
         
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {% if tool.brand %}
+          <div>
+            <label class="text-sm font-medium text-gray-500">Brand</label>
+            <p class="text-gray-900 mt-1">{{ tool.brand }}</p>
+          </div>
+          {% endif %}
+          
+          {% if tool.model_number %}
+          <div>
+            <label class="text-sm font-medium text-gray-500">Model Number</label>
+            <p class="text-gray-900 mt-1">{{ tool.model_number }}</p>
+          </div>
+          {% endif %}
+          
+          {% if tool.serial_number %}
+          <div>
+            <label class="text-sm font-medium text-gray-500">Serial Number</label>
+            <p class="text-gray-900 mt-1">{{ tool.serial_number }}</p>
+          </div>
+          {% endif %}
+        </div>
+        
         {% if tool.value %}
         <div>
           <label class="text-sm font-medium text-gray-500">Estimated Value</label>

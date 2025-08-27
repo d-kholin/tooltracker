@@ -64,6 +64,9 @@ def init_db():
                 description TEXT,
                 value REAL,
                 image_path TEXT,
+                brand TEXT,
+                model_number TEXT,
+                serial_number TEXT,
                 created_by TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(created_by) REFERENCES users(id)
@@ -78,7 +81,8 @@ def init_db():
                 contact_info TEXT,
                 created_by TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(created_by) REFERENCES users(id)
+                FOREIGN KEY(created_by) REFERENCES users(id),
+                UNIQUE(name, created_by)
             )
             """
         )
@@ -98,9 +102,17 @@ def init_db():
         except sqlite3.OperationalError:
             pass
         
-        # Add composite unique constraint for people (name + created_by) to allow same names across different users
+        # Add new tool fields for existing databases
         try:
-            c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_people_name_user ON people (name, created_by)")
+            c.execute("ALTER TABLE tools ADD COLUMN brand TEXT")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            c.execute("ALTER TABLE tools ADD COLUMN model_number TEXT")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            c.execute("ALTER TABLE tools ADD COLUMN serial_number TEXT")
         except sqlite3.OperationalError:
             pass
         
@@ -128,6 +140,97 @@ def init_db():
             pass
         
         conn.commit()
+
+def test_people_constraint():
+    """Test that the people table constraint is working correctly"""
+    try:
+        with get_conn() as conn:
+            c = conn.cursor()
+            
+            # Check if we have at least one user
+            c.execute("SELECT id FROM users LIMIT 1")
+            user = c.fetchone()
+            if not user:
+                print("No users found - cannot test constraint")
+                return False
+            
+            user_id = user[0]
+            print(f"Testing constraint with user ID: {user_id}")
+            
+            # Try to add a test person
+            test_name = "_TEST_CONSTRAINT_"
+            c.execute("INSERT INTO people (name, contact_info, created_by) VALUES (?, ?, ?)", 
+                     (test_name, 'test@example.com', user_id))
+            print("✓ Successfully added test person")
+            
+            # Try to add another person with same name for same user (should fail)
+            try:
+                c.execute("INSERT INTO people (name, contact_info, created_by) VALUES (?, ?, ?)", 
+                         (test_name, 'test2@example.com', user_id))
+                print("✗ WARNING: Constraint not working - duplicate names allowed for same user")
+                # Clean up both test entries
+                c.execute("DELETE FROM people WHERE name = ? AND created_by = ?", (test_name, user_id))
+                return False
+            except sqlite3.IntegrityError:
+                print("✓ Constraint working correctly - prevents duplicate names for same user")
+                # Clean up test entry
+                c.execute("DELETE FROM people WHERE name = ? AND created_by = ?", (test_name, user_id))
+                return True
+                
+    except Exception as e:
+        print(f"Error testing constraint: {e}")
+        return False
+
+def migrate_tools_table():
+    """Migrate existing tools table to include new fields"""
+    try:
+        with get_conn() as conn:
+            c = conn.cursor()
+            
+            # Check if new columns already exist
+            c.execute("PRAGMA table_info(tools)")
+            columns = [col[1] for col in c.fetchall()]
+            
+            migrations_applied = []
+            
+            # Add brand column if it doesn't exist
+            if 'brand' not in columns:
+                try:
+                    c.execute("ALTER TABLE tools ADD COLUMN brand TEXT")
+                    migrations_applied.append("brand")
+                    print("✓ Added brand column to tools table")
+                except sqlite3.OperationalError as e:
+                    print(f"Error adding brand column: {e}")
+            
+            # Add model_number column if it doesn't exist
+            if 'model_number' not in columns:
+                try:
+                    c.execute("ALTER TABLE tools ADD COLUMN model_number TEXT")
+                    migrations_applied.append("model_number")
+                    print("✓ Added model_number column to tools table")
+                except sqlite3.OperationalError as e:
+                    print(f"Error adding model_number column: {e}")
+            
+            # Add serial_number column if it doesn't exist
+            if 'serial_number' not in columns:
+                try:
+                    c.execute("ALTER TABLE tools ADD COLUMN serial_number TEXT")
+                    migrations_applied.append("serial_number")
+                    print("✓ Added serial_number column to tools table")
+                except sqlite3.OperationalError as e:
+                    print(f"Error adding serial_number column: {e}")
+            
+            if migrations_applied:
+                conn.commit()
+                print(f"✓ Migration completed successfully. Added columns: {', '.join(migrations_applied)}")
+            else:
+                print("✓ No migration needed - all columns already exist")
+                
+            return True
+                
+    except Exception as e:
+        print(f"Error during migration: {e}")
+        return False
 
 # Database initialization will be done in app context
 
@@ -317,6 +420,16 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/people')
+@auth_required
+def people():
+    with get_conn() as conn:
+        c = conn.cursor()
+        c.execute("SELECT id, name, contact_info FROM people WHERE created_by = ? ORDER BY name", (current_user.id,))
+        people = [dict(row) for row in c.fetchall()]
+    return render_template('people.html', people=people)
+
+
 @app.route('/api/tools', methods=['GET', 'POST'])
 @auth_required
 def api_tools():
@@ -341,7 +454,7 @@ def api_tools():
         c = conn.cursor()
         c.execute(
             """
-            SELECT t.id, t.name, t.description, t.value, t.image_path, p.name AS borrower, l.lent_on
+            SELECT t.id, t.name, t.description, t.value, t.image_path, t.brand, t.model_number, t.serial_number, p.name AS borrower, l.lent_on
             FROM tools t
             LEFT JOIN loans l ON t.id = l.tool_id AND l.returned_on IS NULL
             LEFT JOIN people p ON l.person_id = p.id
@@ -398,9 +511,13 @@ def add_tool():
                 flash('Error uploading image. Please try again.')
         with get_conn() as conn:
             c = conn.cursor()
+            brand = request.form.get('brand', '')
+            model_number = request.form.get('model_number', '')
+            serial_number = request.form.get('serial_number', '')
+            
             c.execute(
-                "INSERT INTO tools (name, description, value, image_path, created_by) VALUES (?, ?, ?, ?, ?)",
-                (name, description, value, image_path, current_user.id),
+                "INSERT INTO tools (name, description, value, image_path, brand, model_number, serial_number, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (name, description, value, image_path, brand, model_number, serial_number, current_user.id),
             )
             conn.commit()
         return redirect(url_for('index'))
@@ -619,36 +736,7 @@ def edit_loan(loan_id):
                 )
             
             conn.commit()
-            flash('Loan updated successfully!')
-            return redirect(url_for('tool_detail', tool_id=loan['tool_id']))
-    
-    # GET request - show edit form
-    with get_conn() as conn:
-        c = conn.cursor()
-        c.execute(
-            """
-            SELECT l.id, l.lent_on, l.returned_on, l.tool_id, t.name as tool_name, p.name as person_name
-            FROM loans l 
-            JOIN tools t ON l.tool_id = t.id 
-            JOIN people p ON l.person_id = p.id
-            WHERE l.id=? AND t.created_by=?
-            """,
-            (loan_id, current_user.id)
-        )
-        loan = c.fetchone()
-        if not loan:
-            flash('Loan not found or access denied')
-            return redirect(url_for('index'))
-    
-    return render_template('edit_loan.html', loan=loan)
-
-
-@app.route('/people', methods=['GET'])
-@auth_required
-def people():
-    # Debug: Print current user info
-    print(f"Fetching people for user: {current_user.id if current_user.is_authenticated else 'Not authenticated'}")
-    
+        return redirect(url_for('people'))
     with get_conn() as conn:
         c = conn.cursor()
         c.execute("SELECT id, name, contact_info FROM people WHERE created_by = ? ORDER BY name", (current_user.id,))
@@ -758,7 +846,7 @@ def edit_person(person_id):
                 conn.commit()
                 return redirect(url_for('people'))
             except sqlite3.IntegrityError:
-                flash('Person already exists')
+                flash('A person with this name already exists in your list')
         c.execute("SELECT id, name, contact_info FROM people WHERE id=? AND created_by=?", (person_id, current_user.id))
         person = c.fetchone()
         if not person:
@@ -916,7 +1004,7 @@ def tool_detail(tool_id):
         # Get tool details
         c.execute(
             """
-            SELECT t.id, t.name, t.description, t.value, t.image_path, p.name AS borrower, l.lent_on
+            SELECT t.id, t.name, t.description, t.value, t.image_path, t.brand, t.model_number, t.serial_number, p.name AS borrower, l.lent_on
             FROM tools t
             LEFT JOIN loans l ON t.id = l.tool_id AND l.returned_on IS NULL
             LEFT JOIN people p ON l.person_id = p.id
@@ -989,6 +1077,9 @@ def edit_tool(tool_id):
             description = request.form.get('description', '')
             value_raw = request.form.get('value')
             value = float(value_raw) if value_raw else 0
+            brand = request.form.get('brand', '')
+            model_number = request.form.get('model_number', '')
+            serial_number = request.form.get('serial_number', '')
             image_file = request.files.get('image')
             if image_file and image_file.filename:
                 # Validate image file
@@ -1032,13 +1123,13 @@ def edit_tool(tool_id):
                     image_path = None
                     flash('Error updating image. Please try again.')
                 c.execute(
-                    "UPDATE tools SET name=?, description=?, value=?, image_path=? WHERE id=?",
-                    (name, description, value, image_path, tool_id),
+                    "UPDATE tools SET name=?, description=?, value=?, image_path=?, brand=?, model_number=?, serial_number=? WHERE id=?",
+                    (name, description, value, image_path, brand, model_number, serial_number, tool_id),
                 )
             else:
                 c.execute(
-                    "UPDATE tools SET name=?, description=?, value=? WHERE id=?",
-                    (name, description, value, tool_id),
+                    "UPDATE tools SET name=?, description=?, value=?, brand=?, model_number=?, serial_number=? WHERE id=?",
+                    (name, description, value, brand, model_number, serial_number, tool_id),
                 )
             conn.commit()
             return redirect(url_for('index'))
@@ -1055,8 +1146,7 @@ def edit_tool(tool_id):
 def serve_image(filename):
     """Serve images from the data directory"""
     from flask import send_from_directory
-    data_dir = os.path.dirname(app.config['UPLOAD_FOLDER'])
-    return send_from_directory(data_dir, f'images/{filename}')
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
 if __name__ == '__main__':
@@ -1064,5 +1154,9 @@ if __name__ == '__main__':
     with app.app_context():
         init_auth_db(app)
         init_db()
+        # Migrate tools table to include new fields
+        migrate_tools_table()
+        # Test the people table constraint after initialization
+        test_people_constraint()
     
     app.run(host='0.0.0.0', port=5000)
