@@ -1012,6 +1012,64 @@ def financial_report():
                          value_distribution=value_distribution)
 
 
+@app.route('/brand-report')
+@auth_required
+def brand_report():
+    """Show brand breakdown report"""
+    with get_conn() as conn:
+        c = conn.cursor()
+        
+        # Get brand breakdown data
+        c.execute(
+            """
+            SELECT 
+                brand,
+                COUNT(*) as tool_count,
+                COALESCE(SUM(value), 0) as total_value,
+                COALESCE(AVG(value), 0) as avg_value
+            FROM tools 
+            WHERE created_by = ? AND brand IS NOT NULL AND brand != ''
+            GROUP BY brand
+            ORDER BY total_value DESC
+            """,
+            (current_user.id,)
+        )
+        brand_data = c.fetchall()
+        
+        # Calculate totals and percentages
+        total_value = sum(brand['total_value'] for brand in brand_data)
+        total_brands = len(brand_data)
+        
+        # Process brand data with additional insights
+        brands = []
+        chart_colors = [
+            '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6',
+            '#06B6D4', '#84CC16', '#F97316', '#EC4899', '#6366F1'
+        ]
+        
+        for i, brand in enumerate(brand_data):
+            percentage = (brand['total_value'] / total_value * 100) if total_value > 0 else 0
+            brands.append({
+                'name': brand['brand'],
+                'tool_count': brand['tool_count'],
+                'total_value': brand['total_value'],
+                'avg_value': brand['avg_value'],
+                'percentage': percentage,
+                'chart_color': chart_colors[i % len(chart_colors)]
+            })
+        
+        # Calculate averages
+        avg_value_per_brand = total_value / total_brands if total_brands > 0 else 0
+        
+        # Get top brand
+        top_brand = brands[0] if brands else None
+        
+    return render_template('brand_report.html',
+                         brands=brands,
+                         total_brands=total_brands,
+                         total_value=total_value,
+                         avg_value_per_brand=avg_value_per_brand,
+                         top_brand=top_brand)
 
 
 
