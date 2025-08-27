@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+{% block title %}Financial Report - Tool Tracker{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <h1 class="text-3xl font-bold text-gray-900">Reports</h1>
+  <p class="text-gray-600 mt-2">Comprehensive insights into your tool inventory and lending operations.</p>
+</div>
+
+<!-- Report Navigation -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+  <a href="{{ url_for('report') }}" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+    <div class="flex items-center">
+      <div class="flex-shrink-0">
+        <div class="w-8 h-8 bg-brand-light rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2zm0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+          </svg>
+        </div>
+      </div>
+      <div class="ml-4">
+        <h3 class="text-lg font-semibold text-gray-900">Current Loans</h3>
+        <p class="text-sm text-gray-600">Tools currently borrowed</p>
+      </div>
+    </div>
+  </a>
+
+  <a href="{{ url_for('overdue_report') }}" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+    <div class="flex items-center">
+      <div class="flex-shrink-0">
+        <div class="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+      </div>
+      <div class="ml-4">
+        <h3 class="text-lg font-semibold text-gray-900">Overdue Tools</h3>
+        <p class="text-sm text-gray-600">Tools out >30 days</p>
+      </div>
+    </div>
+  </a>
+
+  <a href="{{ url_for('financial_report') }}" class="bg-white rounded-xl shadow-sm border-2 border-green-500 p-6 hover:shadow-md transition-shadow">
+    <div class="flex items-center">
+      <div class="flex-shrink-0">
+        <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+          </svg>
+        </div>
+      </div>
+      <div class="ml-4">
+        <h3 class="text-lg font-semibold text-gray-900">Financial Report</h3>
+        <p class="text-sm text-gray-600">Inventory value & status</p>
+      </div>
+    </div>
+  </a>
+</div>
+
+<!-- Current Report Content -->
+<div class="mb-6">
+  <h2 class="text-2xl font-bold text-gray-900">Financial Report</h2>
+  <p class="text-gray-600 mt-2">Overview of your tool inventory value and financial status.</p>
+</div>
+
+<!-- Summary Cards -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div class="flex items-center">
+      <div class="flex-shrink-0">
+        <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+          </svg>
+        </div>
+      </div>
+      <div class="ml-4">
+        <p class="text-sm font-medium text-gray-500">Total Tools</p>
+        <p class="text-2xl font-bold text-gray-900">{{ inventory_stats.total_tools }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div class="flex items-center">
+      <div class="flex-shrink-0">
+        <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+          </svg>
+        </div>
+      </div>
+      <div class="ml-4">
+        <p class="text-sm font-medium text-gray-500">Total Value</p>
+        <p class="text-2xl font-bold text-gray-900">${{ "%.2f"|format(inventory_stats.total_value) }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div class="flex items-center">
+      <div class="flex-shrink-0">
+        <div class="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+          </svg>
+        </div>
+      </div>
+      <div class="ml-4">
+        <p class="text-sm font-medium text-gray-500">Value Lent Out</p>
+        <p class="text-2xl font-bold text-gray-900">${{ "%.2f"|format(lent_stats.value_lent_out) }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div class="flex items-center">
+      <div class="flex-shrink-0">
+        <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+      </div>
+      <div class="ml-4">
+        <p class="text-sm font-medium text-gray-500">Available Value</p>
+        <p class="text-2xl font-bold text-gray-900">${{ "%.2f"|format(available_value) }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Additional Stats -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div class="text-center">
+      <p class="text-sm font-medium text-gray-500">Average Tool Value</p>
+      <p class="text-2xl font-bold text-gray-900">${{ "%.2f"|format(inventory_stats.avg_value) }}</p>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div class="text-center">
+      <p class="text-sm font-medium text-gray-500">Tools Currently Lent</p>
+      <p class="text-2xl font-bold text-gray-900">{{ lent_stats.tools_lent_out }}</p>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div class="text-center">
+      <p class="text-sm font-medium text-gray-500">Tools Available</p>
+      <p class="text-2xl font-bold text-gray-900">{{ available_tools }}</p>
+    </div>
+  </div>
+</div>
+
+<!-- Value Distribution Chart -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900">Value Distribution</h2>
+    <p class="text-sm text-gray-600">Breakdown of tools by value ranges</p>
+  </div>
+  
+  <div class="p-6">
+    {% if value_distribution %}
+    <div class="space-y-4">
+      {% for range_info in value_distribution %}
+      <div class="flex items-center justify-between">
+        <div class="flex items-center">
+          <div class="w-4 h-4 rounded-full mr-3
+                      {% if range_info.value_range == 'No Value Set' %}bg-gray-400
+                      {% elif range_info.value_range == '$0 - $50' %}bg-green-400
+                      {% elif range_info.value_range == '$51 - $100' %}bg-blue-400
+                      {% elif range_info.value_range == '$101 - $250' %}bg-yellow-400
+                      {% elif range_info.value_range == '$251 - $500' %}bg-orange-400
+                      {% elif range_info.value_range == '$501 - $1000' %}bg-red-400
+                      {% else %}bg-purple-400{% endif %}"></div>
+          <span class="font-medium text-gray-900">{{ range_info.value_range }}</span>
+        </div>
+        <div class="flex items-center space-x-4">
+          <span class="text-sm text-gray-600">{{ range_info.count }} tools</span>
+          <span class="font-medium text-gray-900">${{ "%.2f"|format(range_info.total_value) }}</span>
+        </div>
+      </div>
+      
+      <!-- Progress bar -->
+      <div class="w-full bg-gray-200 rounded-full h-2">
+        {% set percentage = (range_info.count / inventory_stats.total_tools * 100) if inventory_stats.total_tools > 0 else 0 %}
+        <div class="h-2 rounded-full
+                    {% if range_info.value_range == 'No Value Set' %}bg-gray-400
+                    {% elif range_info.value_range == '$0 - $50' %}bg-green-400
+                    {% elif range_info.value_range == '$51 - $100' %}bg-blue-400
+                    {% elif range_info.value_range == '$101 - $250' %}bg-yellow-400
+                    {% elif range_info.value_range == '$251 - $500' %}bg-orange-400
+                    {% elif range_info.value_range == '$501 - $1000' %}bg-red-400
+                    {% else %}bg-purple-400{% endif %}"
+             style="width: {{ percentage }}%"></div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-8">
+      <p class="text-gray-500">No value data available</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Financial Insights -->
+<div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+  <div class="flex">
+    <div class="flex-shrink-0">
+      <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+    </div>
+    <div class="ml-3">
+      <h3 class="text-sm font-medium text-blue-800">Financial Insights</h3>
+      <div class="mt-2 text-sm text-blue-700">
+        <ul class="list-disc list-inside space-y-1">
+          <li><strong>Total Inventory Value:</strong> ${{ "%.2f"|format(inventory_stats.total_value) }} across {{ inventory_stats.total_tools }} tools</li>
+          <li><strong>Currently Lent Out:</strong> ${{ "%.2f"|format(lent_stats.value_lent_out) }} ({{ "%.1f"|format(lent_stats.value_lent_out / inventory_stats.total_value * 100) if inventory_stats.total_value > 0 else 0 }}% of total value)</li>
+          <li><strong>Available for Lending:</strong> ${{ "%.2f"|format(available_value) }} ({{ "%.1f"|format(available_value / inventory_stats.total_value * 100) if inventory_stats.total_value > 0 else 0 }}% of total value)</li>
+          <li><strong>Average Tool Value:</strong> ${{ "%.2f"|format(inventory_stats.avg_value) }}</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
