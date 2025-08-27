@@ -341,7 +341,7 @@ def api_tools():
         c = conn.cursor()
         c.execute(
             """
-            SELECT t.id, t.name, t.value, t.image_path, p.name AS borrower, l.lent_on
+            SELECT t.id, t.name, t.description, t.value, t.image_path, p.name AS borrower, l.lent_on
             FROM tools t
             LEFT JOIN loans l ON t.id = l.tool_id AND l.returned_on IS NULL
             LEFT JOIN people p ON l.person_id = p.id
