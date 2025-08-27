@@ -601,10 +601,10 @@ def person_detail(person_id):
         if not person:
             return redirect(url_for('people'))
         
-        # Get all loans for this person, including tools from other users
+        # Get all loans for this person
         c.execute(
             """
-            SELECT t.name AS tool_name, l.lent_on, l.returned_on, t.created_by as tool_owner,
+            SELECT t.name AS tool_name, l.lent_on, l.returned_on,
                    t.id as tool_id, t.description, t.value
             FROM loans l
             JOIN tools t ON l.tool_id = t.id
@@ -615,20 +615,7 @@ def person_detail(person_id):
         )
         loans = c.fetchall()
         
-        # Get summary of loaned tools by owner
-        c.execute(
-            """
-            SELECT t.created_by as tool_owner, COUNT(*) as tool_count
-            FROM loans l
-            JOIN tools t ON l.tool_id = t.id
-            WHERE l.person_id=? AND l.returned_on IS NULL
-            GROUP BY t.created_by
-            """,
-            (person_id,),
-        )
-        loan_summary = c.fetchall()
-        
-    return render_template('person_loans.html', person=person, loans=loans, loan_summary=loan_summary)
+    return render_template('person_loans.html', person=person, loans=loans)
 
 
 @app.route('/people/<int:person_id>/edit', methods=['GET', 'POST'])

@@ -22,37 +22,11 @@
 </div>
 
 {% if loans %}
-  <!-- Loan Summary -->
-  {% if loan_summary %}
-  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-    <h3 class="text-lg font-medium text-gray-900 mb-3">Currently Loaned Tools Summary</h3>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {% for summary in loan_summary %}
-        <div class="bg-white p-3 rounded border">
-          <div class="flex items-center justify-between">
-            <span class="text-sm font-medium text-gray-700">
-              {% if summary.tool_owner == current_user.id %}
-                Your Tools
-              {% else %}
-                Other User's Tools
-              {% endif %}
-            </span>
-            <span class="text-lg font-bold text-gray-900">{{ summary.tool_count }}</span>
-          </div>
-          {% if summary.tool_owner != current_user.id %}
-            <p class="text-xs text-gray-500 mt-1">User ID: {{ summary.tool_owner or 'Unknown' }}</p>
-          {% endif %}
-        </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
-  
-
+ 
 {% endif %}
 <table class="table table-striped">
   <thead>
-    <tr><th>Tool</th><th>Lent On</th><th>Returned On</th><th>Tool Owner</th></tr>
+    <tr><th>Tool</th><th>Lent On</th><th>Returned On</th></tr>
   </thead>
   <tbody>
   {% for loan in loans %}
@@ -60,13 +34,6 @@
       <td>{{ loan.tool_name }}</td>
       <td>{{ loan.lent_on }}</td>
       <td>{{ loan.returned_on or 'Not returned' }}</td>
-      <td>
-        {% if loan.tool_owner == current_user.id %}
-          <span class="text-green-600 font-medium">You</span>
-        {% else %}
-          <span class="text-gray-500">{{ loan.tool_owner or 'Unknown' }}</span>
-        {% endif %}
-      </td>
     </tr>
   {% endfor %}
   </tbody>
