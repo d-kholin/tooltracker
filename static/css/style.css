@@ -99,6 +99,11 @@ h1 {
   transform: translateY(-1px);
 }
 
+.btn-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+}
+
 .btn-danger {
   background-color: #dc2626;
   color: #ffffff;

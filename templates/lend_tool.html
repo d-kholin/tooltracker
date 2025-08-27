@@ -53,6 +53,12 @@
         <input type="hidden" name="person_id" id="person-id" required>
       </div>
       
+      <div>
+        <label class="form-label">Lent Date</label>
+        <input type="date" name="lent_date" class="form-control w-full" value="{{ today_date }}" required>
+        <p class="text-sm text-gray-500 mt-1">Select when the tool was lent out (defaults to today)</p>
+      </div>
+      
       <div class="flex items-center justify-between pt-4">
         <a href="/" class="btn btn-secondary">
           <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

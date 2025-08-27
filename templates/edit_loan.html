@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}Edit Loan - Tool Tracker{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-900">Edit Loan</h1>
+    <p class="text-gray-600 mt-2">Update the dates for {{ loan.tool_name }} loaned to {{ loan.person_name }}</p>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <form method="post" class="space-y-6">
+      <div>
+        <label class="form-label">Lent Date</label>
+        <input type="date" name="lent_date" class="form-control w-full" value="{{ loan.lent_on }}" required>
+        <p class="text-sm text-gray-500 mt-1">When the tool was lent out</p>
+      </div>
+      
+      <div>
+        <label class="form-label">Returned Date</label>
+        <input type="date" name="returned_date" class="form-control w-full" value="{{ loan.returned_on or '' }}">
+        <p class="text-sm text-gray-500 mt-1">Leave empty if the tool hasn't been returned yet</p>
+      </div>
+      
+      <div class="flex items-center justify-between pt-4">
+        <a href="/tool/{{ loan.tool_id }}" class="btn btn-secondary">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+          </svg>
+          Cancel
+        </a>
+        <button type="submit" class="btn btn-primary">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          Update Loan
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
