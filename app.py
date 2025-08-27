@@ -129,239 +129,6 @@ def init_db():
         
         conn.commit()
 
-def migrate_existing_database():
-    """Migrate existing database to fix people table constraints"""
-    print("Starting database migration...")
-    
-    with get_conn() as conn:
-        c = conn.cursor()
-        
-        # Check if the people table exists
-        c.execute("PRAGMA table_info(people)")
-        table_info = c.fetchall()
-        
-        if not table_info:
-            print("People table doesn't exist, skipping migration")
-            return
-        
-        print(f"Found people table with {len(table_info)} columns")
-        
-        # Check existing indexes on the people table
-        c.execute("PRAGMA index_list(people)")
-        indexes = c.fetchall()
-        print(f"Current indexes on people table: {[idx[1] for idx in indexes]}")
-        
-        # Debug: Check for the specific constraint that's causing issues
-        for idx in indexes:
-            if 'idx_people_name_user' in idx[1] or 'people_name_user' in idx[1]:
-                print(f"⚠️  Found problematic constraint: {idx[1]} (type: {idx[2]})")
-                # Check what this constraint is enforcing
-                # Note: PRAGMA statements don't support parameterized queries
-                c.execute(f"PRAGMA index_info({idx[1]})")
-                index_info = c.fetchall()
-                print(f"    Index columns: {[col[2] for col in index_info]}")
-        
-        # Check if we need to add the created_by column
-        has_created_by = any(col[1] == 'created_by' for col in table_info)
-        if not has_created_by:
-            print("Adding created_by column to people table...")
-            try:
-                c.execute("ALTER TABLE people ADD COLUMN created_by TEXT")
-                print("Successfully added created_by column")
-            except sqlite3.OperationalError as e:
-                print(f"Warning: Could not add created_by column: {e}")
-        
-        # CRITICAL FIX: Get users first and handle duplicates BEFORE assigning created_by values
-        # Get all users to assign records to
-        c.execute("SELECT id FROM users")
-        users = c.fetchall()
-        
-        if not users:
-            print("Warning: No users found, cannot assign orphaned people records")
-            return
-        
-        default_user_id = users[0][0]
-        print(f"Using default user: {default_user_id}")
-        
-        # CRITICAL FIX: Check for ALL duplicate names that would violate constraints
-        print("Checking for duplicate names that need handling...")
-        
-        # Debug: Show current data state
-        c.execute("SELECT name, created_by, COUNT(*) FROM people GROUP BY name, created_by ORDER BY name")
-        current_state = c.fetchall()
-        print("Current data state:")
-        for row in current_state:
-            print(f"  - {row[0]} (created_by: {row[1]}) - Count: {row[2]}")
-        
-        # First, check for duplicates among records without created_by
-        c.execute("SELECT name, COUNT(*) as count FROM people WHERE created_by IS NULL GROUP BY name HAVING count > 1")
-        null_duplicates = c.fetchall()
-        
-        # Also check for duplicates among ALL records (including those that might already have created_by)
-        c.execute("SELECT name, COUNT(*) as count FROM people GROUP BY name HAVING count > 1")
-        all_duplicates = c.fetchall()
-        
-        print(f"Found {len(null_duplicates)} duplicate names without created_by")
-        print(f"Found {len(all_duplicates)} total duplicate names")
-        
-        # CRITICAL: Check if we have any records that would violate the unique constraint
-        # This happens when we have records with the same name but different created_by values
-        c.execute("""
-            SELECT name, COUNT(*) as count 
-            FROM people 
-            WHERE created_by IS NOT NULL 
-            GROUP BY name 
-            HAVING count > 1
-        """)
-        constraint_violations = c.fetchall()
-        
-        if constraint_violations:
-            print(f"⚠️  Found {len(constraint_violations)} names that would violate unique constraint:")
-            for violation in constraint_violations:
-                name = violation[0]
-                print(f"    - {name} appears {violation[1]} times with different created_by values")
-                
-                # Get all records with this name to see the conflict
-                c.execute("SELECT id, name, created_by FROM people WHERE name = ? ORDER BY id", (name,))
-                conflicting_records = c.fetchall()
-                for record in conflicting_records:
-                    print(f"      Record {record[0]}: {record[1]} (created_by: {record[2]})")
-        
-        # Handle duplicates by making names unique per user
-        if null_duplicates:
-            print("Handling duplicates without created_by...")
-            for dup in null_duplicates:
-                name = dup['name']
-                count = dup['count']
-                
-                # Get all records with this name
-                c.execute("SELECT id FROM people WHERE name = ? AND created_by IS NULL ORDER BY id", (name,))
-                duplicate_records = c.fetchall()
-                
-                # Assign first record to default user, make others unique
-                for i, record in enumerate(duplicate_records):
-                    if i == 0:
-                        # First record gets the original name
-                        c.execute("UPDATE people SET created_by = ? WHERE id = ?", (default_user_id, record['id']))
-                        print(f"  Assigned {name} (ID: {record['id']}) to user {default_user_id}")
-                    else:
-                        # Subsequent records get a unique name
-                        unique_name = f"{name}_{i+1}"
-                        c.execute("UPDATE people SET name = ?, created_by = ? WHERE id = ?", (unique_name, default_user_id, record['id']))
-                        print(f"  Renamed duplicate to {unique_name} (ID: {record['id']}) and assigned to user {default_user_id}")
-        
-        # Handle any remaining duplicates that might have created_by values
-        if all_duplicates:
-            print("Checking for remaining duplicates that need resolution...")
-            for dup in all_duplicates:
-                name = dup['name']
-                count = dup['count']
-                
-                if count > 1:
-                    # Get all records with this name
-                    c.execute("SELECT id, created_by FROM people WHERE name = ? ORDER BY id", (name,))
-                    duplicate_records = c.fetchall()
-                    
-                    # Check if we have multiple records with the same name and created_by
-                    c.execute("SELECT created_by, COUNT(*) FROM people WHERE name = ? GROUP BY created_by HAVING COUNT(*) > 1", (name,))
-                    same_user_duplicates = c.fetchall()
-                    
-                    if same_user_duplicates:
-                        print(f"  Found duplicate name '{name}' with same created_by values, resolving...")
-                        
-                        # Keep first record, rename others
-                        for i, record in enumerate(duplicate_records):
-                            if i == 0:
-                                # First record keeps the name
-                                print(f"    Keeping {name} (ID: {record['id']})")
-                            else:
-                                # Subsequent records get unique names
-                                unique_name = f"{name}_{i+1}"
-                                c.execute("UPDATE people SET name = ? WHERE id = ?", (unique_name, record['id']))
-                                print(f"    Renamed to {unique_name} (ID: {record['id']})")
-        
-        # CRITICAL: Resolve constraint violations by making names unique
-        if constraint_violations:
-            print("Resolving constraint violations...")
-            for violation in constraint_violations:
-                name = violation[0]
-                print(f"  Resolving constraint violation for '{name}'...")
-                
-                # Get all records with this name
-                c.execute("SELECT id, name, created_by FROM people WHERE name = ? ORDER BY id", (name,))
-                conflicting_records = c.fetchall()
-                
-                # Keep the first record, rename others to be unique
-                for i, record in enumerate(conflicting_records):
-                    if i == 0:
-                        # First record keeps the original name
-                        print(f"    Keeping {name} (ID: {record[0]}) with created_by: {record[2]}")
-                    else:
-                        # Subsequent records get unique names
-                        unique_name = f"{name}_conflict_{i+1}"
-                        c.execute("UPDATE people SET name = ? WHERE id = ?", (unique_name, record[0]))
-                        print(f"    Renamed to {unique_name} (ID: {record[0]}) to resolve constraint violation")
-        
-        # Now handle any remaining records without created_by
-        c.execute("SELECT COUNT(*) FROM people WHERE created_by IS NULL")
-        remaining_null_count = c.fetchone()[0]
-        
-        if remaining_null_count > 0:
-            print(f"Updating {remaining_null_count} remaining records...")
-            
-            # Safety check: Verify no constraint violations will occur
-            c.execute("""
-                SELECT name, COUNT(*) as count 
-                FROM people 
-                WHERE created_by IS NULL 
-                GROUP BY name
-            """)
-            remaining_names = c.fetchall()
-            
-            for name_row in remaining_names:
-                name = name_row[0]
-                # Check if this name already exists with the default user
-                c.execute("SELECT COUNT(*) FROM people WHERE name = ? AND created_by = ?", (name, default_user_id))
-                existing_count = c.fetchone()[0]
-                
-                if existing_count > 0:
-                    print(f"  ⚠️  Name '{name}' already exists for default user, making unique...")
-                    # Make the remaining record unique
-                    unique_name = f"{name}_remaining"
-                    c.execute("UPDATE people SET name = ?, created_by = ? WHERE name = ? AND created_by IS NULL", 
-                             (unique_name, default_user_id, name))
-                    print(f"    Renamed to {unique_name}")
-                else:
-                    # Safe to update
-                    c.execute("UPDATE people SET created_by = ? WHERE name = ? AND created_by IS NULL", (default_user_id, name))
-                    print(f"    Assigned {name} to default user")
-            
-            print(f"Completed assigning {remaining_null_count} remaining people records to user {default_user_id}")
-        
-        # Try to create the composite unique constraint (only if it doesn't exist)
-        print("Creating composite unique constraint on (name, created_by)...")
-        try:
-            c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_people_name_user ON people (name, created_by)")
-            print("Successfully created composite unique constraint")
-        except sqlite3.OperationalError as e:
-            print(f"Warning: Could not create composite constraint: {e}")
-            print("This may be due to existing constraints - the table will work but without per-user name uniqueness")
-        
-        # Verify the migration
-        c.execute("PRAGMA index_list(people)")
-        final_indexes = c.fetchall()
-        print(f"Final indexes on people table: {[idx[1] for idx in final_indexes]}")
-        
-        # Check if the new constraint was created
-        new_constraint_exists = any('idx_people_name_user' in idx[1] for idx in final_indexes)
-        if new_constraint_exists:
-            print("✅ Migration completed successfully!")
-        else:
-            print("⚠️  Migration completed but composite constraint could not be created")
-            print("The table will work but may not enforce per-user name uniqueness")
-        
-        conn.commit()
-
 # Database initialization will be done in app context
 
 # Add missing utility functions
@@ -829,21 +596,25 @@ def delete_person(person_id):
 def person_detail(person_id):
     with get_conn() as conn:
         c = conn.cursor()
-        c.execute("SELECT name, contact_info FROM people WHERE id=? AND created_by=?", (person_id, current_user.id))
+        c.execute("SELECT id, name, contact_info FROM people WHERE id=? AND created_by=?", (person_id, current_user.id))
         person = c.fetchone()
         if not person:
             return redirect(url_for('people'))
+        
+        # Get all loans for this person
         c.execute(
             """
-            SELECT t.name AS tool_name, l.lent_on, l.returned_on
+            SELECT t.name AS tool_name, l.lent_on, l.returned_on,
+                   t.id as tool_id, t.description, t.value
             FROM loans l
             JOIN tools t ON l.tool_id = t.id
-            WHERE l.person_id=? AND t.created_by=?
+            WHERE l.person_id=?
             ORDER BY l.lent_on DESC
             """,
-            (person_id, current_user.id),
+            (person_id,),
         )
         loans = c.fetchall()
+        
     return render_template('person_loans.html', person=person, loans=loans)
 
 
@@ -895,6 +666,9 @@ def report():
         )
         rows = c.fetchall()
     return render_template('report.html', rows=rows)
+
+
+
 
 
 @app.route('/tool/<int:tool_id>')
@@ -1043,6 +817,5 @@ if __name__ == '__main__':
     with app.app_context():
         init_auth_db(app)
         init_db()
-        migrate_existing_database() # Call the migration function to fix existing databases
     
     app.run(host='0.0.0.0', port=5000)
