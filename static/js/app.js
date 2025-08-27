@@ -74,7 +74,10 @@ const ToolCard = ({ tool }) => {
             )}
             
             <div class="flex-1 min-w-0">
-              <h3 class="font-semibold text-gray-900 text-lg group-hover:text-brand transition-colors truncate">{tool.name}</h3>
+              <div class="flex items-center gap-2 mb-1">
+                <h3 class="font-semibold text-gray-900 text-lg group-hover:text-brand transition-colors truncate">{tool.name}</h3>
+                <BrandBadge brand={tool.brand} />
+              </div>
               <div class="flex items-center gap-2 mt-1">
                 {tool.borrower ? (
                   <span class="status-lent">Lent to {tool.borrower}</span>
@@ -167,6 +170,70 @@ const SearchBar = ({ searchTerm, onSearchChange }) => (
   </div>
 );
 
+const BrandFilter = ({ brands, selectedBrand, onBrandChange }) => (
+  <div class="relative">
+    <select
+      value={selectedBrand}
+      onChange={(e) => onBrandChange(e.target.value)}
+      class="block w-full px-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand focus:border-brand sm:text-sm"
+    >
+      <option value="">All Brands</option>
+      {brands.map(brand => (
+        <option key={brand} value={brand}>{brand}</option>
+      ))}
+    </select>
+  </div>
+);
+
+const BrandBadge = ({ brand }) => {
+  if (!brand) return null;
+  
+  // Define brand colors for common tool brands
+  const brandColors = {
+    'DeWalt': { bg: 'bg-yellow-500', text: 'text-white', border: 'border-yellow-600' },
+    'SawStop': { bg: 'bg-red-600', text: 'text-white', border: 'border-red-700' },
+    'Bosch': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
+    'Mastercraft': { bg: 'bg-red-500', text: 'text-white', border: 'border-red-600' },
+    'Rigid': { bg: 'bg-orange-500', text: 'text-white', border: 'border-orange-600' },
+    'Milwaukee': { bg: 'bg-red-600', text: 'text-white', border: 'border-red-700' },
+    'Makita': { bg: 'bg-blue-500', text: 'text-white', border: 'border-blue-600' },
+    'Festool': { bg: 'bg-green-600', text: 'text-white', border: 'border-green-700' },
+    'Hilti': { bg: 'bg-red-500', text: 'text-white', border: 'border-red-600' },
+    'Snap-on': { bg: 'bg-red-600', text: 'text-white', border: 'border-red-700' },
+    'Craftsman': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
+    'Stanley': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
+    'Black+Decker': { bg: 'bg-orange-500', text: 'text-white', border: 'border-orange-600' },
+    'Porter-Cable': { bg: 'bg-blue-500', text: 'text-white', border: 'border-blue-600' },
+    'Hitachi': { bg: 'bg-red-500', text: 'text-white', border: 'border-red-600' },
+    'Metabo': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
+    'Ryobi': { bg: 'bg-green-500', text: 'text-white', border: 'border-green-600' },
+    'Kobalt': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
+    'Husky': { bg: 'bg-orange-500', text: 'text-white', border: 'border-orange-600' },
+    'Werner': { bg: 'bg-yellow-500', text: 'text-white', border: 'border-yellow-600' },
+    'Little Giant': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
+    'Jet': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
+    'Powermatic': { bg: 'bg-yellow-500', text: 'text-white', border: 'border-yellow-600' },
+    'Delta': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
+    'Grizzly': { bg: 'bg-red-600', text: 'text-white', border: 'border-red-700' },
+    'Shop Fox': { bg: 'bg-orange-500', text: 'text-white', border: 'border-orange-600' },
+    'WEN': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
+    'Skil': { bg: 'bg-orange-500', text: 'text-white', border: 'border-orange-600' },
+    'Dremel': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
+    'Bostitch': { bg: 'bg-red-500', text: 'text-white', border: 'border-red-600' },
+    'Paslode': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
+    'Senco': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' }
+  };
+  
+  // Get brand colors or use default
+  const colors = brandColors[brand] || { bg: 'bg-gray-500', text: 'text-white', border: 'border-gray-600' };
+  
+  return (
+    <span class={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text} ${colors.border} border`}>
+      {brand}
+    </span>
+  );
+};
+
 const EmptyState = ({ isSearching }) => (
   <div class="text-center py-12">
     <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -204,19 +271,32 @@ const App = () => {
   const [tools, setTools] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [brands, setBrands] = React.useState([]);
+  const [selectedBrand, setSelectedBrand] = React.useState('');
 
   React.useEffect(() => {
-    fetch('/api/tools')
-      .then(res => res.json())
-      .then(data => {
-        setTools(data);
+    // Fetch tools and brands in parallel
+    Promise.all([
+      fetch('/api/tools'),
+      fetch('/api/brands')
+    ])
+      .then(responses => Promise.all(responses.map(res => res.json())))
+      .then(([toolsData, brandsData]) => {
+        setTools(toolsData);
+        setBrands(brandsData);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
 
-  // Filter tools based on search term
+  // Filter tools based on search term and brand selection
   const filteredTools = tools.filter(tool => {
+    // Brand filter
+    if (selectedBrand && tool.brand !== selectedBrand) {
+      return false;
+    }
+    
+    // Search term filter
     if (!searchTerm.trim()) return true;
     
     const searchLower = searchTerm.toLowerCase();
@@ -253,21 +333,34 @@ const App = () => {
         </a>
       </div>
       
-      {/* Search Bar */}
-      <SearchBar 
-        searchTerm={searchTerm} 
-        onSearchChange={setSearchTerm} 
-      />
+      {/* Search Bar and Brand Filter */}
+      <div class="flex flex-col sm:flex-row gap-4">
+        <div class="flex-1">
+          <SearchBar 
+            searchTerm={searchTerm} 
+            onSearchChange={setSearchTerm} 
+          />
+        </div>
+        <div class="w-full sm:w-48">
+          <BrandFilter 
+            brands={brands} 
+            selectedBrand={selectedBrand} 
+            onBrandChange={setSelectedBrand} 
+          />
+        </div>
+      </div>
       
       {/* Results count */}
-      {searchTerm && (
+      {(searchTerm || selectedBrand) && (
         <div class="text-sm text-gray-600">
-          Found {filteredTools.length} tool{filteredTools.length !== 1 ? 's' : ''} matching "{searchTerm}"
+          Found {filteredTools.length} tool{filteredTools.length !== 1 ? 's' : ''}
+          {searchTerm && ` matching "${searchTerm}"`}
+          {selectedBrand && ` from ${selectedBrand}`}
         </div>
       )}
       
       {filteredTools.length === 0 ? (
-        <EmptyState isSearching={!!searchTerm} />
+        <EmptyState isSearching={!!searchTerm} isFiltering={!!selectedBrand} />
       ) : (
         <div class="space-y-4">
           {filteredTools.map(tool => (
