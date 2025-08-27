@@ -148,8 +148,17 @@ def migrate_existing_database():
         
         # Check existing indexes on the people table
         c.execute("PRAGMA index_list(people)")
-        indexes = [idx[1] for idx in c.fetchall()]
+        indexes = c.fetchall()
         print(f"Current indexes on people table: {[idx[1] for idx in indexes]}")
+        
+        # Debug: Check for the specific constraint that's causing issues
+        for idx in indexes:
+            if 'idx_people_name_user' in idx[1] or 'people_name_user' in idx[1]:
+                print(f"⚠️  Found problematic constraint: {idx[1]} (type: {idx[2]})")
+                # Check what this constraint is enforcing
+                c.execute("PRAGMA index_info(?)", (idx[1],))
+                index_info = c.fetchall()
+                print(f"    Index columns: {[col[2] for col in index_info]}")
         
         # Check if we need to add the created_by column
         has_created_by = any(col[1] == 'created_by' for col in table_info)
@@ -173,18 +182,31 @@ def migrate_existing_database():
         default_user_id = users[0][0]
         print(f"Using default user: {default_user_id}")
         
-        # First, check for duplicate names that would violate constraints
+        # CRITICAL FIX: Check for ALL duplicate names that would violate constraints
         print("Checking for duplicate names that need handling...")
-        c.execute("SELECT name, COUNT(*) as count FROM people WHERE created_by IS NULL GROUP BY name HAVING count > 1")
-        duplicates = c.fetchall()
         
-        if duplicates:
-            print(f"Found {len(duplicates)} duplicate names that need special handling:")
-            for dup in duplicates:
-                print(f"  - {dup['name']} appears {dup['count']} times")
-            
-            # Handle duplicates by making names unique per user
-            for dup in duplicates:
+        # Debug: Show current data state
+        c.execute("SELECT name, created_by, COUNT(*) FROM people GROUP BY name, created_by ORDER BY name")
+        current_state = c.fetchall()
+        print("Current data state:")
+        for row in current_state:
+            print(f"  - {row[0]} (created_by: {row[1]}) - Count: {row[2]}")
+        
+        # First, check for duplicates among records without created_by
+        c.execute("SELECT name, COUNT(*) as count FROM people WHERE created_by IS NULL GROUP BY name HAVING count > 1")
+        null_duplicates = c.fetchall()
+        
+        # Also check for duplicates among ALL records (including those that might already have created_by)
+        c.execute("SELECT name, COUNT(*) as count FROM people GROUP BY name HAVING count > 1")
+        all_duplicates = c.fetchall()
+        
+        print(f"Found {len(null_duplicates)} duplicate names without created_by")
+        print(f"Found {len(all_duplicates)} total duplicate names")
+        
+        # Handle duplicates by making names unique per user
+        if null_duplicates:
+            print("Handling duplicates without created_by...")
+            for dup in null_duplicates:
                 name = dup['name']
                 count = dup['count']
                 
@@ -204,14 +226,71 @@ def migrate_existing_database():
                         c.execute("UPDATE people SET name = ?, created_by = ? WHERE id = ?", (unique_name, default_user_id, record['id']))
                         print(f"  Renamed duplicate to {unique_name} (ID: {record['id']}) and assigned to user {default_user_id}")
         
+        # Handle any remaining duplicates that might have created_by values
+        if all_duplicates:
+            print("Checking for remaining duplicates that need resolution...")
+            for dup in all_duplicates:
+                name = dup['name']
+                count = dup['count']
+                
+                if count > 1:
+                    # Get all records with this name
+                    c.execute("SELECT id, created_by FROM people WHERE name = ? ORDER BY id", (name,))
+                    duplicate_records = c.fetchall()
+                    
+                    # Check if we have multiple records with the same name and created_by
+                    c.execute("SELECT created_by, COUNT(*) FROM people WHERE name = ? GROUP BY created_by HAVING COUNT(*) > 1", (name,))
+                    same_user_duplicates = c.fetchall()
+                    
+                    if same_user_duplicates:
+                        print(f"  Found duplicate name '{name}' with same created_by values, resolving...")
+                        
+                        # Keep first record, rename others
+                        for i, record in enumerate(duplicate_records):
+                            if i == 0:
+                                # First record keeps the name
+                                print(f"    Keeping {name} (ID: {record['id']})")
+                            else:
+                                # Subsequent records get unique names
+                                unique_name = f"{name}_{i+1}"
+                                c.execute("UPDATE people SET name = ? WHERE id = ?", (unique_name, record['id']))
+                                print(f"    Renamed to {unique_name} (ID: {record['id']})")
+        
         # Now handle any remaining records without created_by
         c.execute("SELECT COUNT(*) FROM people WHERE created_by IS NULL")
         remaining_null_count = c.fetchone()[0]
         
         if remaining_null_count > 0:
             print(f"Updating {remaining_null_count} remaining records...")
-            c.execute("UPDATE people SET created_by = ? WHERE created_by IS NULL", (default_user_id,))
-            print(f"Assigned {remaining_null_count} remaining people records to user {default_user_id}")
+            
+            # Safety check: Verify no constraint violations will occur
+            c.execute("""
+                SELECT name, COUNT(*) as count 
+                FROM people 
+                WHERE created_by IS NULL 
+                GROUP BY name
+            """)
+            remaining_names = c.fetchall()
+            
+            for name_row in remaining_names:
+                name = name_row[0]
+                # Check if this name already exists with the default user
+                c.execute("SELECT COUNT(*) FROM people WHERE name = ? AND created_by = ?", (name, default_user_id))
+                existing_count = c.fetchone()[0]
+                
+                if existing_count > 0:
+                    print(f"  ⚠️  Name '{name}' already exists for default user, making unique...")
+                    # Make the remaining record unique
+                    unique_name = f"{name}_remaining"
+                    c.execute("UPDATE people SET name = ?, created_by = ? WHERE name = ? AND created_by IS NULL", 
+                             (unique_name, default_user_id, name))
+                    print(f"    Renamed to {unique_name}")
+                else:
+                    # Safe to update
+                    c.execute("UPDATE people SET created_by = ? WHERE name = ? AND created_by IS NULL", (default_user_id, name))
+                    print(f"    Assigned {name} to default user")
+            
+            print(f"Completed assigning {remaining_null_count} remaining people records to user {default_user_id}")
         
         # Try to create the composite unique constraint (only if it doesn't exist)
         print("Creating composite unique constraint on (name, created_by)...")
