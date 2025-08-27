@@ -26,7 +26,7 @@
 {% endif %}
 <table class="table table-striped">
   <thead>
-    <tr><th>Tool</th><th>Lent On</th><th>Returned On</th></tr>
+    <tr><th>Tool</th><th>Lent On</th><th>Returned On</th><th>Duration</th></tr>
   </thead>
   <tbody>
   {% for loan in loans %}
@@ -34,6 +34,7 @@
       <td>{{ loan.tool_name }}</td>
       <td>{{ loan.lent_on }}</td>
       <td>{{ loan.returned_on or 'Not returned' }}</td>
+      <td>{{ loan.duration }}</td>
     </tr>
   {% endfor %}
   </tbody>

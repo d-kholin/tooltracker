@@ -491,6 +491,19 @@ def delete_tool(tool_id):
 def lend_tool(tool_id):
     if request.method == 'POST':
         person_id = request.form.get('person_id')
+        lent_date = request.form.get('lent_date')
+        
+        # Validate date input
+        if not lent_date:
+            lent_date = datetime.date.today().isoformat()
+        else:
+            try:
+                # Validate the date format
+                datetime.datetime.strptime(lent_date, '%Y-%m-%d')
+            except ValueError:
+                flash('Invalid date format. Please use YYYY-MM-DD format.')
+                return redirect(url_for('lend_tool', tool_id=tool_id))
+        
         with get_conn() as conn:
             c = conn.cursor()
             # Check if tool belongs to current user
@@ -511,12 +524,12 @@ def lend_tool(tool_id):
                 if not row:
                     flash('Person not found or access denied')
                 else:
-                    lent_on = datetime.date.today().isoformat()
                     c.execute(
                         "INSERT INTO loans (tool_id, person_id, lent_on, lent_by) VALUES (?, ?, ?, ?)",
-                        (tool_id, person_id, lent_on, current_user.id),
+                        (tool_id, person_id, lent_date, current_user.id),
                     )
                     conn.commit()
+                    flash('Tool lent successfully!')
         return redirect(url_for('index'))
     with get_conn() as conn:
         c = conn.cursor()
@@ -525,7 +538,7 @@ def lend_tool(tool_id):
         if not people:
             flash('No people available. Add a person first.')
             return redirect(url_for('people'))
-    return render_template('lend_tool.html', tool_id=tool_id, people=people)
+    return render_template('lend_tool.html', tool_id=tool_id, people=people, today_date=datetime.date.today().isoformat())
 
 
 @app.route('/return/<int:tool_id>', methods=['POST'])
@@ -552,6 +565,82 @@ def return_tool(tool_id):
             )
         conn.commit()
     return redirect(url_for('index'))
+
+
+@app.route('/edit_loan/<int:loan_id>', methods=['GET', 'POST'])
+@auth_required
+def edit_loan(loan_id):
+    if request.method == 'POST':
+        lent_date = request.form.get('lent_date')
+        returned_date = request.form.get('returned_date')
+        
+        # Validate date inputs
+        try:
+            if lent_date:
+                datetime.datetime.strptime(lent_date, '%Y-%m-%d')
+            if returned_date:
+                datetime.datetime.strptime(returned_date, '%Y-%m-%d')
+        except ValueError:
+            flash('Invalid date format. Please use YYYY-MM-DD format.')
+            return redirect(url_for('edit_loan', loan_id=loan_id))
+        
+        with get_conn() as conn:
+            c = conn.cursor()
+            # Check if loan belongs to current user's tools
+            c.execute(
+                """
+                SELECT l.id, l.tool_id, t.name as tool_name 
+                FROM loans l 
+                JOIN tools t ON l.tool_id = t.id 
+                WHERE l.id=? AND t.created_by=?
+                """,
+                (loan_id, current_user.id)
+            )
+            loan = c.fetchone()
+            if not loan:
+                flash('Loan not found or access denied')
+                return redirect(url_for('index'))
+            
+            # Update the loan dates
+            if lent_date and returned_date:
+                c.execute(
+                    "UPDATE loans SET lent_on=?, returned_on=? WHERE id=?",
+                    (lent_date, returned_date, loan_id)
+                )
+            elif lent_date:
+                c.execute(
+                    "UPDATE loans SET lent_on=? WHERE id=?",
+                    (lent_date, loan_id)
+                )
+            elif returned_date:
+                c.execute(
+                    "UPDATE loans SET returned_on=? WHERE id=?",
+                    (returned_date, loan_id)
+                )
+            
+            conn.commit()
+            flash('Loan updated successfully!')
+            return redirect(url_for('tool_detail', tool_id=loan['tool_id']))
+    
+    # GET request - show edit form
+    with get_conn() as conn:
+        c = conn.cursor()
+        c.execute(
+            """
+            SELECT l.id, l.lent_on, l.returned_on, l.tool_id, t.name as tool_name, p.name as person_name
+            FROM loans l 
+            JOIN tools t ON l.tool_id = t.id 
+            JOIN people p ON l.person_id = p.id
+            WHERE l.id=? AND t.created_by=?
+            """,
+            (loan_id, current_user.id)
+        )
+        loan = c.fetchone()
+        if not loan:
+            flash('Loan not found or access denied')
+            return redirect(url_for('index'))
+    
+    return render_template('edit_loan.html', loan=loan)
 
 
 @app.route('/people', methods=['GET'])
@@ -613,7 +702,36 @@ def person_detail(person_id):
             """,
             (person_id,),
         )
-        loans = c.fetchall()
+        loans_raw = c.fetchall()
+        
+        # Calculate duration for each loan
+        loans = []
+        for loan in loans_raw:
+            loan_dict = dict(loan)
+            if loan_dict['lent_on']:
+                try:
+                    lent_date = datetime.datetime.strptime(loan_dict['lent_on'], '%Y-%m-%d').date()
+                    if loan_dict['returned_on']:
+                        # Calculate duration for returned tools
+                        returned_date = datetime.datetime.strptime(loan_dict['returned_on'], '%Y-%m-%d').date()
+                        duration_days = (returned_date - lent_date).days
+                        if duration_days == 0:
+                            loan_dict['duration'] = '1 day'
+                        else:
+                            loan_dict['duration'] = f'{duration_days + 1} days'
+                    else:
+                        # Calculate current duration for tools still out
+                        current_date = datetime.date.today()
+                        duration_days = (current_date - lent_date).days
+                        if duration_days == 0:
+                            loan_dict['duration'] = '1 day (currently out)'
+                        else:
+                            loan_dict['duration'] = f'{duration_days + 1} days (currently out)'
+                except (ValueError, TypeError):
+                    loan_dict['duration'] = 'Unknown'
+            else:
+                loan_dict['duration'] = '-'
+            loans.append(loan_dict)
         
     return render_template('person_loans.html', person=person, loans=loans)
 
@@ -694,7 +812,7 @@ def tool_detail(tool_id):
         # Get lending history
         c.execute(
             """
-            SELECT l.lent_on, l.returned_on, p.name AS person_name, p.contact_info
+            SELECT l.id, l.lent_on, l.returned_on, p.name AS person_name, p.contact_info
             FROM loans l
             JOIN people p ON l.person_id = p.id
             WHERE l.tool_id = ?
@@ -708,15 +826,25 @@ def tool_detail(tool_id):
         loans = []
         for loan in loans_raw:
             loan_dict = dict(loan)
-            if loan_dict['returned_on'] and loan_dict['lent_on']:
+            if loan_dict['lent_on']:
                 try:
                     lent_date = datetime.datetime.strptime(loan_dict['lent_on'], '%Y-%m-%d').date()
-                    returned_date = datetime.datetime.strptime(loan_dict['returned_on'], '%Y-%m-%d').date()
-                    duration_days = (returned_date - lent_date).days
-                    if duration_days == 0:
-                        loan_dict['duration'] = '1 day'
+                    if loan_dict['returned_on']:
+                        # Calculate duration for returned tools
+                        returned_date = datetime.datetime.strptime(loan_dict['returned_on'], '%Y-%m-%d').date()
+                        duration_days = (returned_date - lent_date).days
+                        if duration_days == 0:
+                            loan_dict['duration'] = '1 day'
+                        else:
+                            loan_dict['duration'] = f'{duration_days + 1} days'
                     else:
-                        loan_dict['duration'] = f'{duration_days + 1} days'
+                        # Calculate current duration for tools still out
+                        current_date = datetime.date.today()
+                        duration_days = (current_date - lent_date).days
+                        if duration_days == 0:
+                            loan_dict['duration'] = '1 day (currently out)'
+                        else:
+                            loan_dict['duration'] = f'{duration_days + 1} days (currently out)'
                 except (ValueError, TypeError):
                     loan_dict['duration'] = 'Unknown'
             else:
