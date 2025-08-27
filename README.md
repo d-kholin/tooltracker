@@ -5,6 +5,8 @@
 A modern web application for tracking tools and equipment lending.
 
 ![Homepage Screenshot](pub/homepage.png)
+![Reports Screenshot](pub/reports.png)
+
 
 ## Features
 
