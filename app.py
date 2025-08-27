@@ -628,22 +628,7 @@ def person_detail(person_id):
         )
         loan_summary = c.fetchall()
         
-        # Check for potential duplicate tools (same name, different owners)
-        c.execute(
-            """
-            SELECT t.name, t.created_by as tool_owner, COUNT(*) as count
-            FROM loans l
-            JOIN tools t ON l.tool_id = t.id
-            WHERE l.person_id=?
-            GROUP BY t.name, t.created_by
-            HAVING COUNT(*) > 0
-            ORDER BY t.name
-            """,
-            (person_id,),
-        )
-        potential_duplicates = c.fetchall()
-        
-    return render_template('person_loans.html', person=person, loans=loans, loan_summary=loan_summary, potential_duplicates=potential_duplicates)
+    return render_template('person_loans.html', person=person, loans=loans, loan_summary=loan_summary)
 
 
 @app.route('/people/<int:person_id>/edit', methods=['GET', 'POST'])
@@ -696,42 +681,7 @@ def report():
     return render_template('report.html', rows=rows)
 
 
-@app.route('/duplicates')
-@auth_required
-def duplicates():
-    """Show potential duplicate tools across users"""
-    with get_conn() as conn:
-        c = conn.cursor()
-        
-        # Find tools with the same name but different owners
-        c.execute(
-            """
-            SELECT t.name, t.created_by as owner, COUNT(*) as count,
-                   GROUP_CONCAT(t.created_by) as all_owners
-            FROM tools t
-            GROUP BY t.name
-            HAVING COUNT(DISTINCT t.created_by) > 1
-            ORDER BY t.name
-            """
-        )
-        duplicate_tools = c.fetchall()
-        
-        # Find people with the same name but different owners
-        c.execute(
-            """
-            SELECT p.name, p.created_by as owner, COUNT(*) as count,
-                   GROUP_CONCAT(p.created_by) as all_owners
-            FROM people p
-            GROUP BY p.name
-            HAVING COUNT(DISTINCT p.created_by) > 1
-            ORDER BY p.name
-            """
-        )
-        duplicate_people = c.fetchall()
-        
-    return render_template('duplicates.html', 
-                         duplicate_tools=duplicate_tools, 
-                         duplicate_people=duplicate_people)
+
 
 
 @app.route('/tool/<int:tool_id>')
