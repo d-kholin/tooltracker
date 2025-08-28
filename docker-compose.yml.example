@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   tooltracker:
-    image: ghcr.io/d-kholin/tooltracker/tooltracker:latest
+    image: ghcr.io/d-kholin/tooltracker:latest
     ports:
       - "5000:5000"
     environment:
