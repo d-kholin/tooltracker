@@ -99,10 +99,6 @@ const ToolCard = ({ tool }) => {
                 )}
               </div>
               
-              {tool.description && (
-                <p class="text-gray-600 text-sm mt-2 line-clamp-2">{tool.description}</p>
-              )}
-              
               {tool.value && (
                 <p class="text-sm text-gray-500 mt-1">Value: ${tool.value}</p>
               )}
