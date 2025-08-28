@@ -474,21 +474,80 @@ def api_tools():
             tool = dict(c.fetchone())
         return jsonify(tool), 201
 
+    # Get query parameters for pagination and filtering
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    search = request.args.get('search', '').strip()
+    brand = request.args.get('brand', '').strip()
+    
+    # Ensure reasonable limits
+    per_page = min(max(per_page, 10), 100)
+    page = max(page, 1)
+    offset = (page - 1) * per_page
+
     with get_conn() as conn:
         c = conn.cursor()
-        c.execute(
-            """
-            SELECT t.id, t.name, t.description, t.value, t.image_path, t.brand, t.model_number, t.serial_number, t.acquisition_date, p.name AS borrower, l.lent_on
+        
+        # Build the base query with filters
+        base_query = """
             FROM tools t
             LEFT JOIN loans l ON t.id = l.tool_id AND l.returned_on IS NULL
             LEFT JOIN people p ON l.person_id = p.id
             WHERE t.created_by = ?
+        """
+        params = [current_user.id]
+        
+        # Add search filter
+        if search:
+            search_conditions = [
+                "t.name LIKE ?",
+                "t.description LIKE ?", 
+                "t.brand LIKE ?",
+                "t.model_number LIKE ?",
+                "t.serial_number LIKE ?",
+                "p.name LIKE ?"
+            ]
+            search_param = f"%{search}%"
+            base_query += " AND (" + " OR ".join(search_conditions) + ")"
+            params.extend([search_param] * 6)
+        
+        # Add brand filter
+        if brand:
+            base_query += " AND t.brand = ?"
+            params.append(brand)
+        
+        # Get total count for pagination
+        count_query = f"SELECT COUNT(*) {base_query}"
+        c.execute(count_query, params)
+        total_count = c.fetchone()[0]
+        
+        # Get paginated results
+        tools_query = f"""
+            SELECT t.id, t.name, t.description, t.value, t.image_path, t.brand, t.model_number, t.serial_number, t.acquisition_date, p.name AS borrower, l.lent_on
+            {base_query}
             ORDER BY t.id
-            """,
-            (current_user.id,)
-        )
+            LIMIT ? OFFSET ?
+        """
+        params.extend([per_page, offset])
+        c.execute(tools_query, params)
         tools = [dict(row) for row in c.fetchall()]
-    return jsonify(tools)
+        
+        # Calculate pagination info
+        total_pages = (total_count + per_page - 1) // per_page
+        has_next = page < total_pages
+        has_prev = page > 1
+        
+        return jsonify({
+            'tools': tools,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total_count': total_count,
+                'total_pages': total_pages,
+                'has_next': has_next,
+                'has_prev': has_prev
+            }
+        })
 
 
 @app.route('/api/brands', methods=['GET'])
