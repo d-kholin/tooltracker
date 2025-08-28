@@ -1,6 +1,6 @@
 # Tool Tracker
 
-*Neither a borrower, not a lender be...* - Some smart guy
+*Neither a borrower, nor a lender be...* - Some smart guy
 
 A modern web application for tracking tools and equipment lending.
 

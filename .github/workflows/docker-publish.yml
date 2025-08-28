@@ -9,7 +9,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/tooltracker
+  IMAGE_NAME: d-kholin/tooltracker
 
 jobs:
   # Job for versioned releases (version tags only)
