@@ -3,42 +3,40 @@
 {% block title %}Login - {{ config.APP_NAME }}{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="text-center">Login Required</h3>
+<div class="max-w-md mx-auto mt-20">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="text-center text-xl font-semibold text-gray-900">Login Required</h3>
+        </div>
+        <div class="card-body">
+            {% if error %}
+            <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800" role="alert">
+                {{ error }}
+            </div>
+            {% endif %}
+            
+            <div class="text-center">
+                <p class="mb-6 text-gray-600">You need to log in to access this application.</p>
+                
+                {% if config.OIDC_CLIENT_ID %}
+                <a href="{{ url_for('login') }}" class="btn btn-primary text-base px-8 py-3">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                    </svg>
+                    Sign In with OIDC
+                </a>
+                {% else %}
+                <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800" role="alert">
+                    <strong>Authentication not configured:</strong><br>
+                    Please set up OIDC_CLIENT_ID in your environment variables.
                 </div>
-                <div class="card-body">
-                    {% if error %}
-                    <div class="alert alert-danger" role="alert">
-                        {{ error }}
-                    </div>
-                    {% endif %}
-                    
-                    <div class="text-center">
-                        <p class="mb-4">You need to log in to access this application.</p>
-                        
-                        {% if config.OIDC_CLIENT_ID %}
-                        <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">
-                            <i class="fas fa-sign-in-alt me-2"></i>
-                            Sign In with OIDC
-                        </a>
-                        {% else %}
-                        <div class="alert alert-warning" role="alert">
-                            <strong>Authentication not configured:</strong><br>
-                            Please set up OIDC_CLIENT_ID in your environment variables.
-                        </div>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="mt-4 text-center">
-                        <small class="text-muted">
-                            This application uses OpenID Connect for secure authentication.
-                        </small>
-                    </div>
-                </div>
+                {% endif %}
+            </div>
+            
+            <div class="mt-6 text-center">
+                <small class="text-gray-500">
+                    This application uses OpenID Connect for secure authentication.
+                </small>
             </div>
         </div>
     </div>
