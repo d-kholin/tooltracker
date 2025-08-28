@@ -320,45 +320,141 @@ const EmptyState = ({ isSearching }) => (
 const App = () => {
   const [tools, setTools] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
+  const [loadingMore, setLoadingMore] = React.useState(false);
+  const [filtering, setFiltering] = React.useState(false);
+  const [error, setError] = React.useState(null);
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = React.useState('');
   const [brands, setBrands] = React.useState([]);
   const [selectedBrand, setSelectedBrand] = React.useState('');
+  const [pagination, setPagination] = React.useState({
+    page: 1,
+    per_page: 20,
+    total_count: 0,
+    total_pages: 0,
+    has_next: false,
+    has_prev: false
+  });
 
-  React.useEffect(() => {
-    // Fetch tools and brands in parallel
-    Promise.all([
-      fetch('/api/tools'),
-      fetch('/api/brands')
-    ])
-      .then(responses => Promise.all(responses.map(res => res.json())))
-      .then(([toolsData, brandsData]) => {
-        setTools(toolsData);
-        setBrands(brandsData);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
-
-  // Filter tools based on search term and brand selection
-  const filteredTools = tools.filter(tool => {
-    // Brand filter
-    if (selectedBrand && tool.brand !== selectedBrand) {
-      return false;
+  // Function to fetch tools with current filters
+  const fetchTools = React.useCallback(async (page = 1, append = false) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      per_page: '20'
+    });
+    
+    if (debouncedSearchTerm.trim()) {
+      params.append('search', debouncedSearchTerm.trim());
     }
     
-    // Search term filter
-    if (!searchTerm.trim()) return true;
+    if (selectedBrand) {
+      params.append('brand', selectedBrand);
+    }
+
+    try {
+      const response = await fetch(`/api/tools?${params}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      
+      if (append) {
+        setTools(prevTools => [...prevTools, ...data.tools]);
+      } else {
+        setTools(data.tools);
+      }
+      
+      setPagination(data.pagination);
+      setError(null);
+    } catch (error) {
+      console.error('Error fetching tools:', error);
+      setError('Failed to load tools. Please try again.');
+      if (!append) {
+        setTools([]);
+      }
+    }
+  }, [debouncedSearchTerm, selectedBrand]);
+
+  // Initial load
+  React.useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        // Fetch brands first
+        const brandsResponse = await fetch('/api/brands');
+        if (!brandsResponse.ok) {
+          throw new Error(`HTTP error! status: ${brandsResponse.status}`);
+        }
+        const brandsData = await brandsResponse.json();
+        setBrands(brandsData);
+        
+        // Then fetch first page of tools
+        await fetchTools(1, false);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+        setError('Failed to load initial data. Please refresh the page.');
+        setLoading(false);
+      }
+    };
     
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      tool.name.toLowerCase().includes(searchLower) ||
-      (tool.description && tool.description.toLowerCase().includes(searchLower)) ||
-      (tool.brand && tool.brand.toLowerCase().includes(searchLower)) ||
-      (tool.model_number && tool.model_number.toLowerCase().includes(searchLower)) ||
-      (tool.serial_number && tool.serial_number.toLowerCase().includes(searchLower)) ||
-      (tool.borrower && tool.borrower.toLowerCase().includes(searchLower))
-    );
-  });
+    loadInitialData();
+  }, []);
+
+  // Debounce search term to avoid excessive API calls
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Load more tools when filters change
+  React.useEffect(() => {
+    if (!loading) {
+      // Reset pagination when filters change
+      setPagination(prev => ({ ...prev, page: 1 }));
+      setFiltering(true);
+      fetchTools(1, false).finally(() => setFiltering(false));
+    }
+  }, [debouncedSearchTerm, selectedBrand, fetchTools]);
+
+  // Infinite scroll handler with throttling
+  const handleScroll = React.useCallback(() => {
+    if (loadingMore || !pagination.has_next) return;
+    
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const windowHeight = window.innerHeight;
+    const documentHeight = document.documentElement.scrollHeight;
+    
+    // Load more when user is near bottom (within 100px)
+    if (scrollTop + windowHeight >= documentHeight - 100) {
+      // Throttle scroll events to avoid excessive API calls
+      if (!handleScroll.throttled) {
+        handleScroll.throttled = true;
+        setTimeout(() => {
+          handleScroll.throttled = false;
+        }, 100);
+        loadMoreTools();
+      }
+    }
+  }, [loadingMore, pagination.has_next]);
+
+  // Load more tools
+  const loadMoreTools = async () => {
+    if (loadingMore || !pagination.has_next) return;
+    
+    setLoadingMore(true);
+    const nextPage = pagination.page + 1;
+    await fetchTools(nextPage, true);
+    setLoadingMore(false);
+  };
+
+  // Add scroll listener
+  React.useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
 
   if (loading) {
     return (
@@ -400,22 +496,86 @@ const App = () => {
         </div>
       </div>
       
-      {/* Results count */}
-      {(searchTerm || selectedBrand) && (
+      {/* Results count and filtering indicator */}
+      {(debouncedSearchTerm || selectedBrand) && (
         <div className="text-sm text-gray-600">
-          Found {filteredTools.length} tool{filteredTools.length !== 1 ? 's' : ''}
-          {searchTerm && ` matching "${searchTerm}"`}
+          Found {pagination.total_count} tool{pagination.total_count !== 1 ? 's' : ''}
+          {debouncedSearchTerm && ` matching "${debouncedSearchTerm}"`}
           {selectedBrand && ` from ${selectedBrand}`}
+          {pagination.total_pages > 1 && ` (showing ${tools.length} of ${pagination.total_count})`}
         </div>
       )}
       
-      {filteredTools.length === 0 ? (
-        <EmptyState isSearching={!!searchTerm} isFiltering={!!selectedBrand} />
+      {/* Error display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+          <div className="flex items-center">
+            <svg className="w-5 h-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span className="text-red-800">{error}</span>
+            <button 
+              onClick={() => fetchTools(1, false)} 
+              className="ml-auto text-red-600 hover:text-red-800 underline text-sm"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {/* Filtering indicator */}
+      {filtering && (
+        <div className="flex items-center justify-center py-4 text-gray-600">
+          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-brand mr-2"></div>
+          <span>Applying filters...</span>
+        </div>
+      )}
+      
+      {tools.length === 0 && !error ? (
+        <EmptyState isSearching={!!debouncedSearchTerm} isFiltering={!!selectedBrand} />
       ) : (
         <div className="space-y-4">
-          {filteredTools.map(tool => (
+          {tools.map(tool => (
             <ToolCard key={tool.id} tool={tool} />
           ))}
+          
+          {/* Loading more indicator */}
+          {loadingMore && (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>
+              <span className="ml-3 text-gray-600">Loading more tools...</span>
+            </div>
+          )}
+          
+          {/* Load More button (alternative to infinite scroll) */}
+          {pagination.has_next && !loadingMore && (
+            <div className="text-center py-6">
+              <button
+                onClick={loadMoreTools}
+                className="btn btn-secondary px-8 py-3"
+                disabled={loadingMore}
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+                Load More Tools
+                <span className="ml-2 text-sm text-gray-500">
+                  ({pagination.total_count - tools.length} remaining)
+                </span>
+              </button>
+            </div>
+          )}
+          
+          {/* End of results indicator */}
+          {!pagination.has_next && tools.length > 0 && (
+            <div className="text-center py-8 text-gray-500 border-t border-gray-100">
+              <p>You've reached the end of your tool library</p>
+              {pagination.total_count > 0 && (
+                <p className="text-sm mt-1">Showing all {pagination.total_count} tools</p>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
