@@ -118,7 +118,7 @@ const BRAND_LOGOS = {
     fallback: { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' }
   },
   'SawStop': {
-    logo: null, // Will use fallback text badge
+    logo: "https://upload.wikimedia.org/wikipedia/commons/a/a4/SawStopLogo.png", // Will use fallback text badge
     fallback: { bg: 'bg-red-600', text: 'text-white', border: 'border-red-700' }
   },
   'Mastercraft': {

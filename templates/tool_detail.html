@@ -74,7 +74,7 @@
           <div>
             <label class="text-sm font-medium text-gray-500">Brand</label>
             <div class="mt-1">
-              <div class="brand-badge-logo" data-brand="{{ tool.brand }}">
+              <div class="brand-badge-logo w-32 h-12 flex items-center justify-start" data-brand="{{ tool.brand }}">
                 <!-- Brand logo will be loaded by JavaScript -->
               </div>
             </div>
@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const img = document.createElement('img');
       img.src = brandInfo.logo;
       img.alt = brandName;
-      img.className = 'h-6 w-auto max-w-24 object-contain';
+      img.className = 'h-10 w-auto max-w-28 object-contain';
       img.onerror = function() {
         // Fallback to text if logo fails to load
         brandBadge.innerHTML = `<span class="text-sm font-medium text-gray-900">${brandName}</span>`;
