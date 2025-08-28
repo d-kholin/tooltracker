@@ -8,9 +8,9 @@
 </div>
 
 <!-- Report Navigation -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
   <a href="{{ url_for('report') }}" class="bg-white rounded-xl shadow-sm border-2 border-brand p-6 hover:shadow-md transition-shadow">
-    <div class="flex items-center">
+    <div class="flex items-start">
       <div class="flex-shrink-0">
         <div class="w-8 h-8 bg-brand-light rounded-lg flex items-center justify-center">
           <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -26,7 +26,7 @@
   </a>
 
   <a href="{{ url_for('overdue_report') }}" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-    <div class="flex items-center">
+    <div class="flex items-start">
       <div class="flex-shrink-0">
         <div class="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
           <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,7 +42,7 @@
   </a>
 
   <a href="{{ url_for('financial_report') }}" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-    <div class="flex items-center">
+    <div class="flex items-start">
       <div class="flex-shrink-0">
         <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
           <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -53,6 +53,22 @@
       <div class="ml-4">
         <h3 class="text-lg font-semibold text-gray-900">Financial Report</h3>
         <p class="text-sm text-gray-600">Inventory value & status</p>
+      </div>
+    </div>
+  </a>
+
+  <a href="{{ url_for('brand_report') }}" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+    <div class="flex items-start">
+      <div class="flex-shrink-0">
+        <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+          </svg>
+        </div>
+      </div>
+      <div class="ml-4">
+        <h3 class="text-lg font-semibold text-gray-900">Brand Report</h3>
+        <p class="text-sm text-gray-600">Value breakdown by brand</p>
       </div>
     </div>
   </a>

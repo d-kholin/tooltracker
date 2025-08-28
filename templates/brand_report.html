@@ -1,0 +1,416 @@
+{% extends 'base.html' %}
+{% block title %}Brand Breakdown Report - Tool Tracker{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-900">Reports</h1>
+    <p class="text-gray-600 mt-2">Comprehensive insights into your tool inventory and lending operations.</p>
+  </div>
+
+  <!-- Report Navigation -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <a href="{{ url_for('report') }}" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+      <div class="flex items-start">
+        <div class="flex-shrink-0">
+          <div class="w-8 h-8 bg-brand-light rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="ml-4">
+          <h3 class="text-lg font-semibold text-gray-900">Current Loans</h3>
+          <p class="text-sm text-gray-600">Tools currently borrowed</p>
+        </div>
+      </div>
+    </a>
+
+    <a href="{{ url_for('overdue_report') }}" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+      <div class="flex items-start">
+        <div class="flex-shrink-0">
+          <div class="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="ml-4">
+          <h3 class="text-lg font-semibold text-gray-900">Overdue Tools</h3>
+          <p class="text-sm text-gray-600">Tools out >30 days</p>
+        </div>
+      </div>
+    </a>
+
+    <a href="{{ url_for('financial_report') }}" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+      <div class="flex items-start">
+        <div class="flex-shrink-0">
+          <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="ml-4">
+          <h3 class="text-lg font-semibold text-gray-900">Financial Report</h3>
+          <p class="text-sm text-gray-600">Inventory value & status</p>
+        </div>
+      </div>
+    </a>
+
+    <a href="{{ url_for('brand_report') }}" class="bg-white rounded-xl shadow-sm border-2 border-purple-500 p-6 hover:shadow-md transition-shadow">
+      <div class="flex items-start">
+        <div class="flex-shrink-0">
+          <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="ml-4">
+          <h3 class="text-lg font-semibold text-gray-900">Brand Report</h3>
+          <p class="text-sm text-gray-600">Value breakdown by brand</p>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <div class="mb-6">
+    <h2 class="text-2xl font-bold text-gray-900">Brand Breakdown Report</h2>
+    <p class="text-gray-600 mt-2">Comprehensive analysis of your tools by brand, including value distribution and insights.</p>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div class="flex items-center">
+        <div class="p-2 bg-blue-100 rounded-lg">
+          <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+          </svg>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-600">Total Brands</p>
+          <p class="text-2xl font-bold text-gray-900">{{ total_brands if total_brands > 0 else 'No brands' }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div class="flex items-center">
+        <div class="p-2 bg-green-100 rounded-lg">
+          <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+          </svg>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-600">Total Value</p>
+          <p class="text-2xl font-bold text-gray-900">${{ "%.2f"|format(total_value) if total_value > 0 else '0.00' }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div class="flex items-center">
+        <div class="p-2 bg-purple-100 rounded-lg">
+          <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+          </svg>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-600">Avg Value/Brand</p>
+          <p class="text-2xl font-bold text-gray-900">${{ "%.2f"|format(avg_value_per_brand) if avg_value_per_brand > 0 else '0.00' }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div class="flex items-center">
+        <div class="p-2 bg-orange-100 rounded-lg">
+          <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+          </svg>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-600">Top Brand</p>
+          {% if top_brand %}
+          <p class="text-lg font-bold text-gray-900">{{ top_brand.name }}</p>
+          <p class="text-sm text-gray-500">${{ "%.2f"|format(top_brand.total_value) }}</p>
+          {% else %}
+          <p class="text-lg font-bold text-gray-900">No brands</p>
+          <p class="text-sm text-gray-500">No data</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Brand Breakdown Table -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Brand Breakdown</h2>
+      <p class="text-sm text-gray-600 mt-1">Detailed analysis of each brand in your collection</p>
+    </div>
+    
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tools</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Value</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Value</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">% of Total</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Insights</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          {% if brands %}
+            {% for brand in brands %}
+            <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="flex items-center">
+                <div class="flex-shrink-0">
+                  <div class="w-20 h-8 flex items-center justify-center">
+                    <div class="brand-badge-logo" data-brand="{{ brand.name }}">
+                      <!-- Brand logo will be loaded by JavaScript -->
+                    </div>
+                  </div>
+                </div>
+                <div class="ml-3">
+                  <div class="text-sm font-medium text-gray-900">{{ brand.name }}</div>
+                  <div class="text-sm text-gray-500">{{ brand.tool_count }} tool{{ 's' if brand.tool_count != 1 else '' }}</div>
+                </div>
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              {{ brand.tool_count }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+              ${{ "%.2f"|format(brand.total_value) }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              ${{ "%.2f"|format(brand.avg_value) }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <div class="flex items-center">
+                <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                  <div class="bg-blue-600 h-2 rounded-full" style="width: {{ brand.percentage }}%"></div>
+                </div>
+                <span class="text-xs text-gray-500">{{ "%.1f"|format(brand.percentage) }}%</span>
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              {% if brand.percentage > 20 %}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                  Major Investment
+                </span>
+              {% elif brand.percentage > 10 %}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                  Significant
+                </span>
+              {% elif brand.percentage > 5 %}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  Moderate
+                </span>
+              {% else %}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  Minor
+                </span>
+              {% endif %}
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-900">
+              <div class="space-y-1">
+                {% if brand.avg_value > 500 %}
+                  <div class="text-xs text-purple-600">💎 Premium brand</div>
+                {% endif %}
+                {% if brand.tool_count == 1 and brand.total_value > 200 %}
+                  <div class="text-xs text-orange-600">🔧 Single high-value tool</div>
+                {% endif %}
+                {% if brand.percentage > 15 %}
+                  <div class="text-xs text-red-600">⚠️ High concentration risk</div>
+                {% endif %}
+                {% if brand.avg_value < 50 and brand.tool_count > 5 %}
+                  <div class="text-xs text-green-600">📦 High volume, low cost</div>
+                {% endif %}
+              </div>
+            </td>
+                      </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="7" class="px-6 py-12 text-center">
+                <div class="text-gray-500">
+                  <p class="text-lg font-medium mb-2">No brand data available</p>
+                  <p class="text-sm">Add tools with brand information to see the breakdown report.</p>
+                </div>
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Charts Section -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+    <!-- Value Distribution Chart -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">Value Distribution by Brand</h3>
+      <div class="space-y-3">
+        {% if brands %}
+          {% for brand in brands[:8] %}
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+              <div class="w-3 h-3 rounded-full" style="background-color: {{ brand.chart_color }}"></div>
+              <span class="text-sm font-medium text-gray-900 truncate" style="max-width: 120px;">{{ brand.name }}</span>
+            </div>
+            <div class="flex items-center space-x-3">
+              <div class="w-24 bg-gray-200 rounded-full h-2">
+                <div class="h-2 rounded-full" style="width: {{ brand.percentage }}%; background-color: {{ brand.chart_color }}"></div>
+              </div>
+              <span class="text-sm text-gray-600 w-16 text-right">${{ "%.0f"|format(brand.total_value) }}</span>
+            </div>
+          </div>
+          {% endfor %}
+          {% if brands|length > 8 %}
+          <div class="flex items-center justify-between pt-2 border-t border-gray-200">
+            <div class="flex items-center space-x-3">
+              <div class="w-3 h-3 rounded-full bg-gray-400"></div>
+              <span class="text-sm text-gray-600">Other brands</span>
+            </div>
+            <div class="flex items-center space-x-3">
+              <div class="w-24 bg-gray-200 rounded-full h-2">
+                <div class="h-2 rounded-full bg-gray-400" style="width: {{ (100 - brands[:8]|sum(attribute='percentage')) }}%"></div>
+              </div>
+              <span class="text-sm text-gray-600 w-16 text-right">${{ "%.0f"|format(brands[8:]|sum(attribute='total_value')) }}</span>
+            </div>
+          </div>
+          {% endif %}
+        {% else %}
+          <div class="text-center py-8">
+            <p class="text-gray-500">No brand data available</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Brand Insights -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">Key Insights</h3>
+      <div class="space-y-4">
+        {% if brands %}
+          {% if top_brand %}
+        <div class="p-3 bg-blue-50 rounded-lg">
+          <div class="flex items-start">
+            <svg class="w-5 h-5 text-blue-600 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+            </svg>
+            <div>
+              <p class="text-sm font-medium text-blue-900">{{ top_brand.name }} is your highest-value brand</p>
+              <p class="text-xs text-blue-700 mt-1">Represents {{ "%.1f"|format(top_brand.percentage) }}% of your total tool value</p>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        {% set high_concentration_brands = brands | selectattr('percentage', '>', 15) | list %}
+        {% if high_concentration_brands %}
+        <div class="p-3 bg-yellow-50 rounded-lg">
+          <div class="flex items-start">
+            <svg class="w-5 h-5 text-yellow-600 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+            </svg>
+            <div>
+              <p class="text-sm font-medium text-yellow-900">High brand concentration</p>
+              <p class="text-xs text-yellow-700 mt-1">
+                {% for brand in high_concentration_brands %}
+                  {{ brand.name }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+                represent over 15% of your value each
+              </p>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        {% set premium_brands = brands | selectattr('avg_value', '>', 300) | list %}
+        {% if premium_brands %}
+        <div class="p-3 bg-purple-50 rounded-lg">
+          <div class="flex items-start">
+            <svg class="w-5 h-5 text-purple-600 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+            </svg>
+            <div>
+              <p class="text-sm font-medium text-purple-900">Premium brand collection</p>
+              <p class="text-xs text-purple-700 mt-1">
+                {% for brand in premium_brands[:3] %}
+                  {{ brand.name }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+                have high average tool values
+              </p>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        {% set diverse_brands = brands | selectattr('tool_count', '>', 3) | selectattr('avg_value', '<', 100) | list %}
+        {% if diverse_brands %}
+        <div class="p-3 bg-green-50 rounded-lg">
+          <div class="flex items-start">
+            <svg class="w-5 h-5 text-green-600 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+            </svg>
+            <div>
+              <p class="text-sm font-medium text-green-900">Diverse collection</p>
+              <p class="text-xs text-green-700 mt-1">
+                {% for brand in diverse_brands[:3] %}
+                  {{ brand.name }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+                offer good variety at reasonable prices
+              </p>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+        {% else %}
+          <div class="text-center py-8">
+            <p class="text-gray-500">No brand data available for insights</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+<script>
+// Load brand logos for the brand report
+document.addEventListener('DOMContentLoaded', function() {
+  const brandBadges = document.querySelectorAll('.brand-badge-logo');
+  
+  brandBadges.forEach(badge => {
+    const brandName = badge.getAttribute('data-brand');
+    if (brandName && typeof getBrandInfo === 'function') {
+      const brandInfo = getBrandInfo(brandName);
+      
+      if (brandInfo && brandInfo.logo) {
+        // Create logo image
+        const img = document.createElement('img');
+        img.src = brandInfo.logo;
+        img.alt = brandName;
+        img.className = 'h-6 w-auto max-w-16 object-contain';
+        img.onerror = function() {
+          // Fallback to text if logo fails to load
+          badge.innerHTML = `<span class="text-xs font-medium text-gray-600">${brandName}</span>`;
+        };
+        badge.appendChild(img);
+      } else {
+        // Fallback to text
+        badge.innerHTML = `<span class="text-xs font-medium text-gray-600">${brandName}</span>`;
+      }
+    }
+  });
+});
+</script>
+
+{% endblock %}
