@@ -172,19 +172,11 @@
             <td class="px-6 py-4 whitespace-nowrap">
               <div class="flex items-center">
                 <div class="flex-shrink-0">
-                  {% if brand.name in ['DeWalt', 'Milwaukee', 'Makita', 'Bosch', 'Festool', 'Hilti', 'Snap-on'] %}
-                    <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                      </svg>
+                  <div class="w-8 h-8 flex items-center justify-center">
+                    <div class="brand-badge-logo" data-brand="{{ brand.name }}">
+                      <!-- Brand logo will be loaded by JavaScript -->
                     </div>
-                  {% else %}
-                    <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                      <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                      </svg>
-                    </div>
-                  {% endif %}
+                  </div>
                 </div>
                 <div class="ml-3">
                   <div class="text-sm font-medium text-gray-900">{{ brand.name }}</div>
@@ -407,4 +399,35 @@
     </a>
   </div>
 </div>
+
+<script>
+// Load brand logos for the brand report
+document.addEventListener('DOMContentLoaded', function() {
+  const brandBadges = document.querySelectorAll('.brand-badge-logo');
+  
+  brandBadges.forEach(badge => {
+    const brandName = badge.getAttribute('data-brand');
+    if (brandName && typeof getBrandInfo === 'function') {
+      const brandInfo = getBrandInfo(brandName);
+      
+      if (brandInfo && brandInfo.logo) {
+        // Create logo image
+        const img = document.createElement('img');
+        img.src = brandInfo.logo;
+        img.alt = brandName;
+        img.className = 'w-6 h-6 object-contain';
+        img.onerror = function() {
+          // Fallback to text if logo fails to load
+          badge.innerHTML = `<span class="text-xs font-medium text-gray-600">${brandName}</span>`;
+        };
+        badge.appendChild(img);
+      } else {
+        // Fallback to text
+        badge.innerHTML = `<span class="text-xs font-medium text-gray-600">${brandName}</span>`;
+      }
+    }
+  });
+});
+</script>
+
 {% endblock %}

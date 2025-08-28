@@ -73,7 +73,11 @@
           {% if tool.brand %}
           <div>
             <label class="text-sm font-medium text-gray-500">Brand</label>
-            <p class="text-gray-900 mt-1">{{ tool.brand }}</p>
+            <div class="mt-1">
+              <div class="brand-badge-logo" data-brand="{{ tool.brand }}">
+                <!-- Brand logo will be loaded by JavaScript -->
+              </div>
+            </div>
           </div>
           {% endif %}
           
@@ -190,4 +194,33 @@
     {% endif %}
   </div>
 </div>
+
+<script>
+// Load brand logo for tool detail page
+document.addEventListener('DOMContentLoaded', function() {
+  const brandBadge = document.querySelector('.brand-badge-logo');
+  
+  if (brandBadge && typeof getBrandInfo === 'function') {
+    const brandName = brandBadge.getAttribute('data-brand');
+    const brandInfo = getBrandInfo(brandName);
+    
+    if (brandInfo && brandInfo.logo) {
+      // Create logo image
+      const img = document.createElement('img');
+      img.src = brandInfo.logo;
+      img.alt = brandName;
+      img.className = 'h-6 w-auto max-w-24 object-contain';
+      img.onerror = function() {
+        // Fallback to text if logo fails to load
+        brandBadge.innerHTML = `<span class="text-sm font-medium text-gray-900">${brandName}</span>`;
+      };
+      brandBadge.appendChild(img);
+    } else {
+      // Fallback to text
+      brandBadge.innerHTML = `<span class="text-sm font-medium text-gray-900">${brandName}</span>`;
+    }
+  }
+});
+</script>
+
 {% endblock %}

@@ -14,6 +14,7 @@ A modern web application for tracking tools and equipment lending.
 - **Lending System**: Lend tools to people and track returns
 - **People Management**: Maintain a database of people who borrow tools
 - **Reporting**: View current loans and lending history
+- **Brand Logo Badges**: Professional manufacturer logos instead of plain text badges
 - **Responsive Design**: Works seamlessly on desktop and mobile devices
 - **Multi-User Authentication**: OIDC-based authentication with support for multiple users
 - **User Isolation**: Each user can only access their own tools and people
@@ -44,6 +45,26 @@ Add in your OIDC values (Yes, this only works with SSO. Don't use local auth!)
 4. **Access the application:**
    Open your browser to `http://localhost:5000`
 
+
+## Brand Logo Badges
+
+Tool Tracker now features professional manufacturer logo badges instead of plain colored text. This provides a more polished and recognizable way to identify tool brands throughout the application.
+
+### Supported Brands
+The system includes logos for popular tool manufacturers such as:
+- **Power Tools**: DeWalt, Milwaukee, Makita, Bosch, Festool, Hilti, Ryobi
+- **Hand Tools**: Snap-on, Craftsman, Stanley, Black+Decker
+- **Garden Tools**: Stihl, Husqvarna, Echo
+- **And many more...**
+
+### How It Works
+- **Logo Display**: Known brands automatically show their manufacturer logos
+- **Smart Fallback**: Unknown brands gracefully fall back to styled text badges
+- **Error Handling**: If a logo fails to load, the system automatically shows the brand name
+- **Consistent Styling**: All badges maintain consistent sizing and appearance
+
+### Demo
+Check out the brand badge demo at `/static/brand-badge-demo.html` to see the new logos in action!
 
 ## A note from the Dev
 👋 Hi! Ok, the above is a bit of a lie, I'm not much of a developer. Heck, I'm a manager who can't stop tinkering, and this is my latest project. 

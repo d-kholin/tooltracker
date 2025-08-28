@@ -188,50 +188,36 @@ const BrandFilter = ({ brands, selectedBrand, onBrandChange }) => (
 const BrandBadge = ({ brand }) => {
   if (!brand) return null;
   
-  // Define brand colors for common tool brands
-  const brandColors = {
-    'DeWalt': { bg: 'bg-yellow-500', text: 'text-white', border: 'border-yellow-600' },
-    'SawStop': { bg: 'bg-red-600', text: 'text-white', border: 'border-red-700' },
-    'Bosch': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
-    'Mastercraft': { bg: 'bg-red-500', text: 'text-white', border: 'border-red-600' },
-    'Rigid': { bg: 'bg-orange-500', text: 'text-white', border: 'border-orange-600' },
-    'Milwaukee': { bg: 'bg-red-600', text: 'text-white', border: 'border-red-700' },
-    'Makita': { bg: 'bg-blue-500', text: 'text-white', border: 'border-blue-600' },
-    'Festool': { bg: 'bg-green-600', text: 'text-white', border: 'border-green-700' },
-    'Hilti': { bg: 'bg-red-500', text: 'text-white', border: 'border-red-600' },
-    'Snap-on': { bg: 'bg-red-600', text: 'text-white', border: 'border-red-700' },
-    'Craftsman': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
-    'Stanley': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
-    'Black+Decker': { bg: 'bg-orange-500', text: 'text-white', border: 'border-orange-600' },
-    'Porter-Cable': { bg: 'bg-blue-500', text: 'text-white', border: 'border-blue-600' },
-    'Hitachi': { bg: 'bg-red-500', text: 'text-white', border: 'border-red-600' },
-    'Metabo': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
-    'Ryobi': { bg: 'bg-green-500', text: 'text-white', border: 'border-green-600' },
-    'Kobalt': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
-    'Husky': { bg: 'bg-orange-500', text: 'text-white', border: 'border-orange-600' },
-    'Werner': { bg: 'bg-yellow-500', text: 'text-white', border: 'border-yellow-600' },
-    'Little Giant': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
-    'Jet': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
-    'Powermatic': { bg: 'bg-yellow-500', text: 'text-white', border: 'border-yellow-600' },
-    'Delta': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
-    'Grizzly': { bg: 'bg-red-600', text: 'text-white', border: 'border-red-700' },
-    'Shop Fox': { bg: 'bg-orange-500', text: 'text-white', border: 'border-orange-600' },
-    'WEN': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
-    'Skil': { bg: 'bg-orange-500', text: 'text-white', border: 'border-orange-600' },
-    'Dremel': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
-    'Bostitch': { bg: 'bg-red-500', text: 'text-white', border: 'border-red-600' },
-    'Paslode': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' },
-    'Senco': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' }
-  };
+  // Get brand info from the brand-logos.js file
+  const brandInfo = getBrandInfo(brand);
   
-  // Get brand colors or use default
-  const colors = brandColors[brand] || { bg: 'bg-gray-500', text: 'text-white', border: 'border-gray-600' };
-  
-  return (
-    <span class={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text} ${colors.border} border`}>
-      {brand}
-    </span>
-  );
+  if (brandInfo && brandInfo.logo) {
+    // Show logo badge
+    return (
+      <span class="inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium bg-white border border-gray-200 shadow-sm">
+        <img 
+          src={brandInfo.logo} 
+          alt={brand} 
+          class="h-4 w-auto max-w-16 object-contain"
+          onError={(e) => {
+            // Fallback to text if logo fails to load
+            e.target.style.display = 'none';
+            e.target.nextSibling.style.display = 'inline';
+          }}
+        />
+        <span class="hidden text-gray-700">{brand}</span>
+      </span>
+    );
+  } else {
+    // Fallback to colored text badge
+    const colors = (brandInfo && brandInfo.fallback) || { bg: 'bg-gray-500', text: 'text-white', border: 'border-gray-600' };
+    
+    return (
+      <span class={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text} ${colors.border} border`}>
+        {brand}
+      </span>
+    );
+  }
 };
 
 const EmptyState = ({ isSearching }) => (
