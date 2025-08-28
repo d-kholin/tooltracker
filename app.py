@@ -3,11 +3,12 @@ import sqlite3
 import datetime
 import uuid
 import secrets
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+import csv
+import io
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_file
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename
 from PIL import Image
-import io
 from config import config
 from auth import User, OIDCAuth, init_auth_db, create_or_update_user, auth_required
 
@@ -115,6 +116,10 @@ def init_db():
             c.execute("ALTER TABLE tools ADD COLUMN serial_number TEXT")
         except sqlite3.OperationalError:
             pass
+        try:
+            c.execute("ALTER TABLE tools ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+        except sqlite3.OperationalError:
+            pass
         
         c.execute(
             """
@@ -219,6 +224,15 @@ def migrate_tools_table():
                     print("✓ Added serial_number column to tools table")
                 except sqlite3.OperationalError as e:
                     print(f"Error adding serial_number column: {e}")
+            
+            # Add created_at column if it doesn't exist
+            if 'created_at' not in columns:
+                try:
+                    c.execute("ALTER TABLE tools ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+                    migrations_applied.append("created_at")
+                    print("✓ Added created_at column to tools table")
+                except sqlite3.OperationalError as e:
+                    print(f"Error adding created_at column: {e}")
             
             if migrations_applied:
                 conn.commit()
@@ -1224,6 +1238,247 @@ def serve_image(filename):
     """Serve images from the data directory"""
     from flask import send_from_directory
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+
+@app.route('/user/settings')
+@auth_required
+def user_settings():
+    """User settings page with export/import functionality"""
+    return render_template('user_settings.html')
+
+
+@app.route('/user/export/tools')
+@auth_required
+def export_tools():
+    """Export user's tools as CSV"""
+    try:
+        with get_conn() as conn:
+            c = conn.cursor()
+            
+            # Check if created_at column exists
+            c.execute("PRAGMA table_info(tools)")
+            columns = [col[1] for col in c.fetchall()]
+            has_created_at = 'created_at' in columns
+            
+            if has_created_at:
+                c.execute("""
+                    SELECT name, description, value, brand, model_number, serial_number, created_at
+                    FROM tools 
+                    WHERE created_by = ?
+                    ORDER BY name
+                """, (current_user.id,))
+            else:
+                c.execute("""
+                    SELECT name, description, value, brand, model_number, serial_number
+                    FROM tools 
+                    WHERE created_by = ?
+                    ORDER BY name
+                """, (current_user.id,))
+            
+            tools = c.fetchall()
+        
+        # Create CSV in memory
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        if has_created_at:
+            writer.writerow(['Name', 'Description', 'Value', 'Brand', 'Model Number', 'Serial Number', 'Created At'])
+        else:
+            writer.writerow(['Name', 'Description', 'Value', 'Brand', 'Model Number', 'Serial Number'])
+        
+        # Write data
+        for tool in tools:
+            if has_created_at:
+                writer.writerow([
+                    tool['name'] or '',
+                    tool['description'] or '',
+                    tool['value'] or '',
+                    tool['brand'] or '',
+                    tool['model_number'] or '',
+                    tool['serial_number'] or '',
+                    tool['created_at'] or ''
+                ])
+            else:
+                writer.writerow([
+                    tool['name'] or '',
+                    tool['description'] or '',
+                    tool['value'] or '',
+                    tool['brand'] or '',
+                    tool['model_number'] or '',
+                    tool['serial_number'] or ''
+                ])
+        
+        output.seek(0)
+        
+        # Create response with CSV file
+        return send_file(
+            io.BytesIO(output.getvalue().encode('utf-8')),
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name=f'tools_export_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        )
+        
+    except Exception as e:
+        flash(f'Error exporting tools: {str(e)}')
+        return redirect(url_for('user_settings'))
+
+
+@app.route('/user/import/tools', methods=['GET', 'POST'])
+@auth_required
+def import_tools():
+    """Import tools from CSV file"""
+    if request.method == 'POST':
+        if 'csv_file' not in request.files:
+            flash('No file selected')
+            return redirect(url_for('user_settings'))
+        
+        file = request.files['csv_file']
+        if file.filename == '':
+            flash('No file selected')
+            return redirect(url_for('user_settings'))
+        
+        if not file.filename.endswith('.csv'):
+            flash('Please select a CSV file')
+            return redirect(url_for('user_settings'))
+        
+        try:
+            # Read CSV file
+            stream = io.StringIO(file.stream.read().decode('utf-8'))
+            reader = csv.DictReader(stream)
+            
+            with get_conn() as conn:
+                c = conn.cursor()
+                
+                # Check if created_at column exists in database
+                c.execute("PRAGMA table_info(tools)")
+                columns = [col[1] for col in c.fetchall()]
+                has_created_at = 'created_at' in columns
+                
+                # Validate headers based on database schema
+                if has_created_at:
+                    expected_headers = ['Name', 'Description', 'Value', 'Brand', 'Model Number', 'Serial Number', 'Created At']
+                else:
+                    expected_headers = ['Name', 'Description', 'Value', 'Brand', 'Model Number', 'Serial Number']
+                
+                if not all(header in reader.fieldnames for header in expected_headers):
+                    flash('Invalid CSV format. Please use the template provided.')
+                    return redirect(url_for('user_settings'))
+                
+                imported_count = 0
+                errors = []
+                
+                for row_num, row in enumerate(reader, start=2):  # Start at 2 because row 1 is header
+                    try:
+                        # Validate required fields
+                        if not row['Name'].strip():
+                            errors.append(f'Row {row_num}: Name is required')
+                            continue
+                        
+                        # Parse value
+                        value = 0.0
+                        if row['Value'].strip():
+                            try:
+                                value = float(row['Value'])
+                            except ValueError:
+                                errors.append(f'Row {row_num}: Invalid value format')
+                                continue
+                        
+                        # Insert tool based on available columns
+                        if has_created_at:
+                            c.execute("""
+                                INSERT INTO tools (name, description, value, brand, model_number, serial_number, created_by, created_at)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            """, (
+                                row['Name'].strip(),
+                                row['Description'].strip() if row['Description'] else '',
+                                value,
+                                row['Brand'].strip() if row['Brand'] else '',
+                                row['Model Number'].strip() if row['Model Number'] else '',
+                                row['Serial Number'].strip() if row['Serial Number'] else '',
+                                current_user.id,
+                                row['Created At'] if row['Created At'] else datetime.datetime.now().isoformat()
+                            ))
+                        else:
+                            c.execute("""
+                                INSERT INTO tools (name, description, value, brand, model_number, serial_number, created_by)
+                                VALUES (?, ?, ?, ?, ?, ?, ?)
+                            """, (
+                                row['Name'].strip(),
+                                row['Description'].strip() if row['Description'] else '',
+                                value,
+                                row['Brand'].strip() if row['Brand'] else '',
+                                row['Model Number'].strip() if row['Model Number'] else '',
+                                row['Serial Number'].strip() if row['Serial Number'] else '',
+                                current_user.id
+                            ))
+                        imported_count += 1
+                        
+                    except Exception as e:
+                        errors.append(f'Row {row_num}: {str(e)}')
+                
+                conn.commit()
+                
+                if errors:
+                    flash(f'Import completed with {len(errors)} errors. {imported_count} tools imported successfully.')
+                    for error in errors[:5]:  # Show first 5 errors
+                        flash(f'Error: {error}')
+                else:
+                    flash(f'Successfully imported {imported_count} tools!')
+                
+        except Exception as e:
+            flash(f'Error importing tools: {str(e)}')
+        
+        return redirect(url_for('user_settings'))
+    
+    return redirect(url_for('user_settings'))
+
+
+@app.route('/user/download/template')
+@auth_required
+def download_template():
+    """Download CSV template for tool import"""
+    try:
+        # Check if created_at column exists in database
+        with get_conn() as conn:
+            c = conn.cursor()
+            c.execute("PRAGMA table_info(tools)")
+            columns = [col[1] for col in c.fetchall()]
+            has_created_at = 'created_at' in columns
+        
+        # Create CSV template in memory
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write header based on database schema
+        if has_created_at:
+            writer.writerow(['Name', 'Description', 'Value', 'Brand', 'Model Number', 'Serial Number', 'Created At'])
+            
+            # Write example rows with created_at
+            writer.writerow(['Hammer', 'Standard claw hammer', '25.00', 'Stanley', '16-100', 'HM001', '2024-01-15T10:00:00'])
+            writer.writerow(['Drill', 'Cordless power drill', '150.00', 'DeWalt', 'DCD777C2', 'DR002', '2024-01-16T14:30:00'])
+            writer.writerow(['Screwdriver Set', 'Phillips and flathead set', '35.00', 'Craftsman', 'CMHT65075', 'SD003', ''])
+        else:
+            writer.writerow(['Name', 'Description', 'Value', 'Brand', 'Model Number', 'Serial Number'])
+            
+            # Write example rows without created_at
+            writer.writerow(['Hammer', 'Standard claw hammer', '25.00', 'Stanley', '16-100', 'HM001'])
+            writer.writerow(['Drill', 'Cordless power drill', '150.00', 'DeWalt', 'DCD777C2', 'DR002'])
+            writer.writerow(['Screwdriver Set', 'Phillips and flathead set', '35.00', 'Craftsman', 'CMHT65075', 'SD003'])
+        
+        output.seek(0)
+        
+        # Create response with CSV file
+        return send_file(
+            io.BytesIO(output.getvalue().encode('utf-8')),
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name='tools_import_template.csv'
+        )
+        
+    except Exception as e:
+        flash(f'Error downloading template: {str(e)}')
+        return redirect(url_for('user_settings'))
 
 
 if __name__ == '__main__':
