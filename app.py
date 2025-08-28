@@ -68,6 +68,7 @@ def init_db():
                 brand TEXT,
                 model_number TEXT,
                 serial_number TEXT,
+                acquisition_date TEXT,
                 created_by TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(created_by) REFERENCES users(id)
@@ -233,6 +234,15 @@ def migrate_tools_table():
                     print("✓ Added created_at column to tools table")
                 except sqlite3.OperationalError as e:
                     print(f"Error adding created_at column: {e}")
+            
+            # Add acquisition_date column if it doesn't exist
+            if 'acquisition_date' not in columns:
+                try:
+                    c.execute("ALTER TABLE tools ADD COLUMN acquisition_date TEXT")
+                    migrations_applied.append("acquisition_date")
+                    print("✓ Added acquisition_date column to tools table")
+                except sqlite3.OperationalError as e:
+                    print(f"Error adding acquisition_date column: {e}")
             
             if migrations_applied:
                 conn.commit()
@@ -468,7 +478,7 @@ def api_tools():
         c = conn.cursor()
         c.execute(
             """
-            SELECT t.id, t.name, t.description, t.value, t.image_path, t.brand, t.model_number, t.serial_number, p.name AS borrower, l.lent_on
+            SELECT t.id, t.name, t.description, t.value, t.image_path, t.brand, t.model_number, t.serial_number, t.acquisition_date, p.name AS borrower, l.lent_on
             FROM tools t
             LEFT JOIN loans l ON t.id = l.tool_id AND l.returned_on IS NULL
             LEFT JOIN people p ON l.person_id = p.id
@@ -547,10 +557,11 @@ def add_tool():
             brand = request.form.get('brand', '')
             model_number = request.form.get('model_number', '')
             serial_number = request.form.get('serial_number', '')
+            acquisition_date = request.form.get('acquisition_date', '')
             
             c.execute(
-                "INSERT INTO tools (name, description, value, image_path, brand, model_number, serial_number, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (name, description, value, image_path, brand, model_number, serial_number, current_user.id),
+                "INSERT INTO tools (name, description, value, image_path, brand, model_number, serial_number, acquisition_date, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (name, description, value, image_path, brand, model_number, serial_number, acquisition_date, current_user.id),
             )
             conn.commit()
         return redirect(url_for('index'))
@@ -1095,7 +1106,7 @@ def tool_detail(tool_id):
         # Get tool details
         c.execute(
             """
-            SELECT t.id, t.name, t.description, t.value, t.image_path, t.brand, t.model_number, t.serial_number, p.name AS borrower, l.lent_on
+            SELECT t.id, t.name, t.description, t.value, t.image_path, t.brand, t.model_number, t.serial_number, t.acquisition_date, p.name AS borrower, l.lent_on
             FROM tools t
             LEFT JOIN loans l ON t.id = l.tool_id AND l.returned_on IS NULL
             LEFT JOIN people p ON l.person_id = p.id
@@ -1171,6 +1182,7 @@ def edit_tool(tool_id):
             brand = request.form.get('brand', '')
             model_number = request.form.get('model_number', '')
             serial_number = request.form.get('serial_number', '')
+            acquisition_date = request.form.get('acquisition_date', '')
             image_file = request.files.get('image')
             if image_file and image_file.filename:
                 # Validate image file
@@ -1214,13 +1226,13 @@ def edit_tool(tool_id):
                     image_path = None
                     flash('Error updating image. Please try again.')
                 c.execute(
-                    "UPDATE tools SET name=?, description=?, value=?, image_path=?, brand=?, model_number=?, serial_number=? WHERE id=?",
-                    (name, description, value, image_path, brand, model_number, serial_number, tool_id),
+                    "UPDATE tools SET name=?, description=?, value=?, image_path=?, brand=?, model_number=?, serial_number=?, acquisition_date=? WHERE id=?",
+                    (name, description, value, image_path, brand, model_number, serial_number, acquisition_date, tool_id),
                 )
             else:
                 c.execute(
-                    "UPDATE tools SET name=?, description=?, value=?, brand=?, model_number=?, serial_number=? WHERE id=?",
-                    (name, description, value, brand, model_number, serial_number, tool_id),
+                    "UPDATE tools SET name=?, description=?, value=?, brand=?, model_number=?, serial_number=?, acquisition_date=? WHERE id=?",
+                    (name, description, value, brand, model_number, serial_number, acquisition_date, tool_id),
                 )
             conn.commit()
             return redirect(url_for('index'))
@@ -1262,14 +1274,14 @@ def export_tools():
             
             if has_created_at:
                 c.execute("""
-                    SELECT name, description, value, brand, model_number, serial_number, created_at
+                    SELECT name, description, value, brand, model_number, serial_number, acquisition_date, created_at
                     FROM tools 
                     WHERE created_by = ?
                     ORDER BY name
                 """, (current_user.id,))
             else:
                 c.execute("""
-                    SELECT name, description, value, brand, model_number, serial_number
+                    SELECT name, description, value, brand, model_number, serial_number, acquisition_date
                     FROM tools 
                     WHERE created_by = ?
                     ORDER BY name
@@ -1283,9 +1295,9 @@ def export_tools():
         
         # Write header
         if has_created_at:
-            writer.writerow(['Name', 'Description', 'Value', 'Brand', 'Model Number', 'Serial Number', 'Created At'])
+            writer.writerow(['Name', 'Description', 'Value', 'Brand', 'Model Number', 'Serial Number', 'Acquisition Date', 'Created At'])
         else:
-            writer.writerow(['Name', 'Description', 'Value', 'Brand', 'Model Number', 'Serial Number'])
+            writer.writerow(['Name', 'Description', 'Value', 'Brand', 'Model Number', 'Serial Number', 'Acquisition Date'])
         
         # Write data
         for tool in tools:
@@ -1297,6 +1309,7 @@ def export_tools():
                     tool['brand'] or '',
                     tool['model_number'] or '',
                     tool['serial_number'] or '',
+                    tool['acquisition_date'] or '',
                     tool['created_at'] or ''
                 ])
             else:
@@ -1306,7 +1319,8 @@ def export_tools():
                     tool['value'] or '',
                     tool['brand'] or '',
                     tool['model_number'] or '',
-                    tool['serial_number'] or ''
+                    tool['serial_number'] or '',
+                    tool['acquisition_date'] or ''
                 ])
         
         output.seek(0)
@@ -1357,9 +1371,9 @@ def import_tools():
                 
                 # Validate headers based on database schema
                 if has_created_at:
-                    expected_headers = ['Name', 'Description', 'Value', 'Brand', 'Model Number', 'Serial Number', 'Created At']
+                    expected_headers = ['Name', 'Description', 'Value', 'Brand', 'Model Number', 'Serial Number', 'Acquisition Date', 'Created At']
                 else:
-                    expected_headers = ['Name', 'Description', 'Value', 'Brand', 'Model Number', 'Serial Number']
+                    expected_headers = ['Name', 'Description', 'Value', 'Brand', 'Model Number', 'Serial Number', 'Acquisition Date']
                 
                 if not all(header in reader.fieldnames for header in expected_headers):
                     flash('Invalid CSV format. Please use the template provided.')
@@ -1387,7 +1401,22 @@ def import_tools():
                         # Insert tool based on available columns
                         if has_created_at:
                             c.execute("""
-                                INSERT INTO tools (name, description, value, brand, model_number, serial_number, created_by, created_at)
+                                INSERT INTO tools (name, description, value, brand, model_number, serial_number, acquisition_date, created_by, created_at)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """, (
+                                row['Name'].strip(),
+                                row['Description'].strip() if row['Description'] else '',
+                                value,
+                                row['Brand'].strip() if row['Brand'] else '',
+                                row['Model Number'].strip() if row['Model Number'] else '',
+                                row['Serial Number'].strip() if row['Serial Number'] else '',
+                                row['Acquisition Date'].strip() if row['Acquisition Date'] else '',
+                                current_user.id,
+                                row['Created At'] if row['Created At'] else datetime.datetime.now().isoformat()
+                            ))
+                        else:
+                            c.execute("""
+                                INSERT INTO tools (name, description, value, brand, model_number, serial_number, acquisition_date, created_by)
                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                             """, (
                                 row['Name'].strip(),
@@ -1396,20 +1425,7 @@ def import_tools():
                                 row['Brand'].strip() if row['Brand'] else '',
                                 row['Model Number'].strip() if row['Model Number'] else '',
                                 row['Serial Number'].strip() if row['Serial Number'] else '',
-                                current_user.id,
-                                row['Created At'] if row['Created At'] else datetime.datetime.now().isoformat()
-                            ))
-                        else:
-                            c.execute("""
-                                INSERT INTO tools (name, description, value, brand, model_number, serial_number, created_by)
-                                VALUES (?, ?, ?, ?, ?, ?, ?)
-                            """, (
-                                row['Name'].strip(),
-                                row['Description'].strip() if row['Description'] else '',
-                                value,
-                                row['Brand'].strip() if row['Brand'] else '',
-                                row['Model Number'].strip() if row['Model Number'] else '',
-                                row['Serial Number'].strip() if row['Serial Number'] else '',
+                                row['Acquisition Date'].strip() if row['Acquisition Date'] else '',
                                 current_user.id
                             ))
                         imported_count += 1
@@ -1452,19 +1468,19 @@ def download_template():
         
         # Write header based on database schema
         if has_created_at:
-            writer.writerow(['Name', 'Description', 'Value', 'Brand', 'Model Number', 'Serial Number', 'Created At'])
+            writer.writerow(['Name', 'Description', 'Value', 'Brand', 'Model Number', 'Serial Number', 'Acquisition Date', 'Created At'])
             
             # Write example rows with created_at
-            writer.writerow(['Hammer', 'Standard claw hammer', '25.00', 'Stanley', '16-100', 'HM001', '2024-01-15T10:00:00'])
-            writer.writerow(['Drill', 'Cordless power drill', '150.00', 'DeWalt', 'DCD777C2', 'DR002', '2024-01-16T14:30:00'])
-            writer.writerow(['Screwdriver Set', 'Phillips and flathead set', '35.00', 'Craftsman', 'CMHT65075', 'SD003', ''])
+            writer.writerow(['Hammer', 'Standard claw hammer', '25.00', 'Stanley', '16-100', 'HM001', '2024-01-15', '2024-01-15T10:00:00'])
+            writer.writerow(['Drill', 'Cordless power drill', '150.00', 'DeWalt', 'DCD777C2', 'DR002', '2024-01-16', '2024-01-16T14:30:00'])
+            writer.writerow(['Screwdriver Set', 'Phillips and flathead set', '35.00', 'Craftsman', 'CMHT65075', 'SD003', '2024-01-17', ''])
         else:
-            writer.writerow(['Name', 'Description', 'Value', 'Brand', 'Model Number', 'Serial Number'])
+            writer.writerow(['Name', 'Description', 'Value', 'Brand', 'Model Number', 'Serial Number', 'Acquisition Date'])
             
             # Write example rows without created_at
-            writer.writerow(['Hammer', 'Standard claw hammer', '25.00', 'Stanley', '16-100', 'HM001'])
-            writer.writerow(['Drill', 'Cordless power drill', '150.00', 'DeWalt', 'DCD777C2', 'DR002'])
-            writer.writerow(['Screwdriver Set', 'Phillips and flathead set', '35.00', 'Craftsman', 'CMHT65075', 'SD003'])
+            writer.writerow(['Hammer', 'Standard claw hammer', '25.00', 'Stanley', '16-100', 'HM001', '2024-01-15'])
+            writer.writerow(['Drill', 'Cordless power drill', '150.00', 'DeWalt', 'DCD777C2', 'DR002', '2024-01-16'])
+            writer.writerow(['Screwdriver Set', 'Phillips and flathead set', '35.00', 'Craftsman', 'CMHT65075', 'SD003', '2024-01-17'])
         
         output.seek(0)
         

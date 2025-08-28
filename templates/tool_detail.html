@@ -103,6 +103,13 @@
         </div>
         {% endif %}
         
+        {% if tool.acquisition_date %}
+        <div>
+          <label class="text-sm font-medium text-gray-500">Acquisition Date</label>
+          <p class="text-gray-900 mt-1">{{ tool.acquisition_date }}</p>
+        </div>
+        {% endif %}
+        
         <!-- Action Buttons -->
         <div class="pt-4">
           {% if tool.borrower %}
