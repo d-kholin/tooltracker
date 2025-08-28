@@ -85,11 +85,11 @@ const ToolCard = ({ tool }) => {
             
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-gray-900 text-lg group-hover:text-brand transition-colors truncate">{tool.name}</h3>
-                {/* Hide badge on mobile - it will be shown below the image */}
+                {/* Show brand badge before tool name on desktop only */}
                 <div className="hidden md:block">
                   <BrandBadge brand={tool.brand} />
                 </div>
+                <h3 className="font-semibold text-gray-900 text-lg group-hover:text-brand transition-colors truncate">{tool.name}</h3>
               </div>
               <div className="flex items-center gap-2 mt-1">
                 {tool.borrower ? (
@@ -260,11 +260,11 @@ const BrandBadge = ({ brand }) => {
   if (brandInfo && brandInfo.logo) {
     // Show logo badge
     return (
-      <span className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium bg-white border border-gray-200 shadow-sm">
+      <span className="inline-flex items-center justify-center px-2 py-1 rounded-lg text-xs font-medium bg-white border border-gray-200 shadow-sm w-20 h-8">
         <img 
           src={brandInfo.logo} 
           alt={brand} 
-          className="h-4 w-auto max-w-16 object-contain"
+          className="h-6 w-auto max-w-16 object-contain"
           onError={(e) => {
             // Fallback to text if logo fails to load
             e.target.style.display = 'none';
@@ -279,7 +279,7 @@ const BrandBadge = ({ brand }) => {
     const colors = (brandInfo && brandInfo.fallback) || { bg: 'bg-gray-500', text: 'text-white', border: 'border-gray-600' };
     
     return (
-      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text} ${colors.border} border`}>
+      <span className={`inline-flex items-center justify-center px-2 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text} ${colors.border} border w-20 h-8`}>
         {brand}
       </span>
     );

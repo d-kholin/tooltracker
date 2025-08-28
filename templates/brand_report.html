@@ -172,7 +172,7 @@
             <td class="px-6 py-4 whitespace-nowrap">
               <div class="flex items-center">
                 <div class="flex-shrink-0">
-                  <div class="w-8 h-8 flex items-center justify-center">
+                  <div class="w-20 h-8 flex items-center justify-center">
                     <div class="brand-badge-logo" data-brand="{{ brand.name }}">
                       <!-- Brand logo will be loaded by JavaScript -->
                     </div>
@@ -398,7 +398,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const img = document.createElement('img');
         img.src = brandInfo.logo;
         img.alt = brandName;
-        img.className = 'w-6 h-6 object-contain';
+        img.className = 'h-6 w-auto max-w-16 object-contain';
         img.onerror = function() {
           // Fallback to text if logo fails to load
           badge.innerHTML = `<span class="text-xs font-medium text-gray-600">${brandName}</span>`;
