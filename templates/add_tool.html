@@ -60,13 +60,21 @@
         </div>
       </div>
       
-      <div>
-        <label class="form-label">Estimated Value</label>
-        <div class="relative">
-          <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
-          <input type="number" step="0.01" class="form-control w-full pl-8" name="value" placeholder="0.00">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="form-label">Estimated Value</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+            <input type="number" step="0.01" class="form-control w-full pl-8" name="value" placeholder="0.00">
+          </div>
+          <p class="text-sm text-gray-500 mt-1">Optional: Enter the approximate value for insurance purposes</p>
         </div>
-        <p class="text-sm text-gray-500 mt-1">Optional: Enter the approximate value for insurance purposes</p>
+        
+        <div>
+          <label class="form-label">Acquisition Date</label>
+          <input type="date" class="form-control w-full" name="acquisition_date" placeholder="When you got this tool">
+          <p class="text-sm text-gray-500 mt-1">Optional: When you acquired this tool</p>
+        </div>
       </div>
       
       <div>

@@ -99,9 +99,7 @@ const ToolCard = ({ tool }) => {
                 )}
               </div>
               
-              {tool.value && (
-                <p className="text-sm text-gray-500 mt-1">Value: ${tool.value}</p>
-              )}
+
             </div>
           </div>
         </div>
