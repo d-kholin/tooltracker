@@ -65,6 +65,14 @@ const BRAND_LOGOS = {
     logo: null, // Will use fallback text badge
     fallback: { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' }
   },
+  'Kreg': {
+    logo: "https://cdn.brandfetch.io/idjFyaaz5z/theme/dark/logo.svg?c=1bxid64Mup7aczewSAYMX&t=1755662940080", // Will use fallback text badge
+    fallback: { bg: 'bg-blue-500', text: 'text-white', border: 'border-blue-600' }
+  },
+  'Greenworks': {
+    logo: "https://cdn.brandfetch.io/idT0i1XKWG/w/400/h/400/theme/dark/icon.jpeg?c=1bxid64Mup7aczewSAYMX&t=1752699616258", // Will use fallback text badge
+    fallback: { bg: 'bg-green-500', text: 'text-white', border: 'border-green-600' }
+  },
   'Husky': {
     logo: "https://en.wikipedia.org/wiki/Husky_(tool_brand)#/media/File:Husky_(tools)_logo.svg", // Will use fallback text badge
     fallback: { bg: 'bg-orange-500', text: 'text-white', border: 'border-orange-600' }
@@ -129,8 +137,16 @@ const BRAND_LOGOS = {
     logo: "https://upload.wikimedia.org/wikipedia/commons/f/f0/Ridgid_logo.svg", // Will use fallback text badge
     fallback: { bg: 'bg-orange-500', text: 'text-white', border: 'border-orange-600' }
   },
+  'Klein Tools': {
+    logo: "https://cdn.brandfetch.io/idJaY594G_/theme/dark/logo.svg?c=1bxid64Mup7aczewSAYMX&t=1753165911033", // Will use fallback text badge
+    fallback: { bg: 'bg-orange-500', text: 'text-white', border: 'border-orange-600' }
+  },
   'Little Giant': {
     logo: null, // Will use fallback text badge
+    fallback: { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' }
+  },
+  'Wagner': {
+    logo: "https://cdn.brandfetch.io/idLgg03QRO/theme/dark/logo.svg?c=1bxid64Mup7aczewSAYMX&t=1737017728647", // Will use fallback text badge
     fallback: { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-700' }
   }
 };
