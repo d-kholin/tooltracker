@@ -110,7 +110,8 @@ const ToolCard = ({ tool }) => {
           </div>
         </div>
         
-        <div class="action-buttons flex flex-col gap-2 ml-4">
+        {/* Desktop action buttons - hidden on mobile */}
+        <div class="action-buttons hidden md:flex flex-col gap-2 ml-4">
           {tool.borrower ? (
             <form
               method="POST"
@@ -153,6 +154,62 @@ const ToolCard = ({ tool }) => {
           <button
             onClick={handleHistoryClick}
             class="btn btn-sm btn-secondary"
+            data-action="history"
+          >
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            History
+          </button>
+        </div>
+      </div>
+      
+      {/* Mobile action buttons - horizontal layout at bottom */}
+      <div class="md:hidden mt-4 pt-4 border-t border-gray-100">
+        <div class="flex gap-2 justify-start">
+          {tool.borrower ? (
+            <form
+              method="POST"
+              action={`/return/${tool.id}`}
+              onClick={handleReturnClick}
+              data-action="return"
+              class="flex-1"
+            >
+              <button type="submit" class="btn btn-sm btn-secondary w-full" data-action="return">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                Return
+              </button>
+            </form>
+          ) : (
+            <a
+              href={`/lend/${tool.id}`}
+              class="btn btn-sm btn-primary flex-1 text-center"
+              onClick={handleLendClick}
+              data-action="lend"
+            >
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+              </svg>
+              Lend
+            </a>
+          )}
+          
+          <button
+            onClick={handleEditClick}
+            class="btn btn-sm btn-secondary flex-1"
+            data-action="edit"
+          >
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+            </svg>
+            Edit
+          </button>
+          
+          <button
+            onClick={handleHistoryClick}
+            class="btn btn-sm btn-secondary flex-1"
             data-action="history"
           >
             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
