@@ -401,12 +401,20 @@ document.addEventListener('DOMContentLoaded', function() {
         img.className = 'h-6 w-auto max-w-16 object-contain';
         img.onerror = function() {
           // Fallback to text if logo fails to load
-          badge.innerHTML = `<span class="text-xs font-medium text-gray-600">${brandName}</span>`;
+          const span = document.createElement('span');
+          span.className = 'text-xs font-medium text-gray-600';
+          span.textContent = brandName;
+          badge.innerHTML = '';
+          badge.appendChild(span);
         };
         badge.appendChild(img);
       } else {
         // Fallback to text
-        badge.innerHTML = `<span class="text-xs font-medium text-gray-600">${brandName}</span>`;
+        const span = document.createElement('span');
+        span.className = 'text-xs font-medium text-gray-600';
+        span.textContent = brandName;
+        badge.innerHTML = '';
+        badge.appendChild(span);
       }
     }
   });
