@@ -380,7 +380,7 @@ def oidc_callback():
     # Verify state parameter
     state = session.get('oauth_state')
     if not state or state != request.args.get('state'):
-        app.logger.error(f'Invalid state parameter. Expected: {state}, Got: {request.args.get("state")}')
+        app.logger.error('Invalid state parameter - OAuth state mismatch detected')
         flash('Invalid state parameter')
         return redirect(url_for('login'))
     
