@@ -130,7 +130,7 @@ const BRAND_LOGOS = {
     fallback: { bg: 'bg-red-600', text: 'text-white', border: 'border-red-700' }
   },
   'Mastercraft': {
-    logo: "https://en.wikipedia.org/wiki/File:Mastercraft_logo.svg#/media/File:Mastercraft_logo.svg", // Will use fallback text badge
+    logo: "https://upload.wikimedia.org/wikipedia/en/thumb/9/94/Mastercraft_logo.svg/640px-Mastercraft_logo.svg.png", // Will use fallback text badge
     fallback: { bg: 'bg-red-500', text: 'text-white', border: 'border-red-600' }
   },
   'Rigid': {
