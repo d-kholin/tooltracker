@@ -219,12 +219,20 @@ document.addEventListener('DOMContentLoaded', function() {
       img.className = 'h-10 w-auto max-w-28 object-contain';
       img.onerror = function() {
         // Fallback to text if logo fails to load
-        brandBadge.innerHTML = `<span class="text-sm font-medium text-gray-900">${brandName}</span>`;
+        const span = document.createElement('span');
+        span.className = 'text-sm font-medium text-gray-900';
+        span.textContent = brandName;
+        brandBadge.innerHTML = '';
+        brandBadge.appendChild(span);
       };
       brandBadge.appendChild(img);
     } else {
       // Fallback to text
-      brandBadge.innerHTML = `<span class="text-sm font-medium text-gray-900">${brandName}</span>`;
+      const span = document.createElement('span');
+      span.className = 'text-sm font-medium text-gray-900';
+      span.textContent = brandName;
+      brandBadge.innerHTML = '';
+      brandBadge.appendChild(span);
     }
   }
 });
