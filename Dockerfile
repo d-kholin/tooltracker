@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 WORKDIR /app
 
 # Add build argument to help invalidate cache for static files
@@ -25,4 +25,9 @@ RUN echo "Build Date: ${BUILD_DATE:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}" > /app/bu
     echo "Cache Bust: ${CACHE_BUST:-unknown}" >> /app/build-info.txt
 
 EXPOSE 5000
+
+# Add health check to monitor container health
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:5000/ || exit 1
+
 CMD ["python", "app.py"]
