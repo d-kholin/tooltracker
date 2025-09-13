@@ -73,6 +73,10 @@ class OIDCAuth:
             self.app.logger.warning("OIDC_CLIENT_ID not configured, authentication disabled")
             return
         
+        if not self.app.config.get('OIDC_REDIRECT_URI'):
+            self.app.logger.error("OIDC_REDIRECT_URI not configured, authentication disabled")
+            return
+        
         self.app.logger.info(f"Setting up OIDC with client_id: {self.app.config['OIDC_CLIENT_ID']}")
         self.app.logger.info(f"Client secret configured: {'Yes' if self.app.config.get('OIDC_CLIENT_SECRET') else 'No'}")
         
@@ -108,12 +112,19 @@ class OIDCAuth:
             return None
         
         scopes = self.app.config.get('OIDC_SCOPES', 'openid profile email')
+        self.app.logger.info(f'OIDC authorization endpoint: {self.oidc_config["authorization_endpoint"]}')
+        self.app.logger.info(f'OIDC redirect_uri input: {redirect_uri}')
+        self.app.logger.info(f'OIDC scopes: {scopes}')
+        self.app.logger.info(f'OIDC state: {state}')
+        
         auth_url = self.client.prepare_request_uri(
             self.oidc_config['authorization_endpoint'],
             redirect_uri=redirect_uri,
             scope=scopes,
             state=state
         )
+        
+        self.app.logger.info(f'OIDC generated auth URL: {auth_url}')
         return auth_url
     
     def get_token(self, authorization_response, redirect_uri):

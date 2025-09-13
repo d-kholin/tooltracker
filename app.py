@@ -7,7 +7,7 @@ import csv
 import io
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_file
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from werkzeug.utils import secure_filename
+from werkzeug.middleware.proxy_fix import ProxyFix
 from PIL import Image
 from config import config
 from auth import User, OIDCAuth, init_auth_db, create_or_update_user, auth_required
@@ -18,6 +18,18 @@ app_config = config[config_name]
 
 app = Flask(__name__)
 app.config.from_object(app_config)
+
+# Configure ProxyFix for reverse proxy support
+# This helps Flask understand the original request scheme when behind a reverse proxy
+# It's safe to always use this middleware - it only affects requests when proxy headers are present
+app.wsgi_app = ProxyFix(
+    app.wsgi_app,
+    x_for=1,  # Number of trusted proxies
+    x_proto=1,  # Number of trusted proxies for protocol
+    x_host=1,  # Number of trusted proxies for host
+    x_port=1,  # Number of trusted proxies for port
+    x_prefix=1  # Number of trusted proxies for prefix
+)
 
 # Initialize Flask-Login
 login_manager = LoginManager()
@@ -365,8 +377,10 @@ def login():
     state = secrets.token_urlsafe(32)
     session['oauth_state'] = state
     
-    # Get authorization URL
-    redirect_uri = url_for('oidc_callback', _external=True)
+    # Get authorization URL - use configured redirect URI
+    redirect_uri = app.config['OIDC_REDIRECT_URI']
+    app.logger.info(f'Using redirect_uri: {redirect_uri}')
+
     auth_url = oidc_auth.get_authorization_url(redirect_uri, state)
     
     if not auth_url:
@@ -389,7 +403,8 @@ def oidc_callback():
     
     # Handle authorization response
     try:
-        redirect_uri = url_for('oidc_callback', _external=True)
+        # Use the configured redirect URI
+        redirect_uri = app.config['OIDC_REDIRECT_URI']
         app.logger.info(f'OIDC callback - redirect_uri: {redirect_uri}')
         app.logger.info(f'OIDC callback - request.url: {request.url}')
         
@@ -437,6 +452,11 @@ def logout():
     logout_user()
     flash('You have been logged out')
     return redirect(url_for('index'))
+
+@app.route('/health')
+def health():
+    """Health check endpoint for Docker"""
+    return jsonify({'status': 'healthy', 'service': 'tooltracker'}), 200
 
 @app.route('/')
 @auth_required

@@ -26,6 +26,11 @@ class Config:
     APP_NAME = os.environ.get('APP_NAME', 'Tool Tracker')
     APP_URL = os.environ.get('APP_URL', 'http://localhost:5000')
     
+    # OIDC Redirect URI - REQUIRED for proper Authentik integration
+    OIDC_REDIRECT_URI = os.environ.get('OIDC_REDIRECT_URI')
+    if not OIDC_REDIRECT_URI:
+        raise ValueError("OIDC_REDIRECT_URI environment variable is required. Set it to your full callback URL (e.g., https://yourdomain.com/oidc/callback)")
+
     # Image optimization constants
     MAX_IMAGE_DIMENSION = 1024
     JPEG_QUALITY = 85
