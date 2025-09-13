@@ -453,6 +453,11 @@ def logout():
     flash('You have been logged out')
     return redirect(url_for('index'))
 
+@app.route('/health')
+def health():
+    """Health check endpoint for Docker"""
+    return jsonify({'status': 'healthy', 'service': 'tooltracker'}), 200
+
 @app.route('/')
 @auth_required
 def index():
