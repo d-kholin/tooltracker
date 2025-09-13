@@ -377,8 +377,10 @@ def login():
     state = secrets.token_urlsafe(32)
     session['oauth_state'] = state
     
-    # Get authorization URL
-    redirect_uri = url_for('oidc_callback', _external=True)
+    # Get authorization URL - use configured redirect URI
+    redirect_uri = app.config['OIDC_REDIRECT_URI']
+    app.logger.info(f'Using redirect_uri: {redirect_uri}')
+
     auth_url = oidc_auth.get_authorization_url(redirect_uri, state)
     
     if not auth_url:
@@ -401,7 +403,8 @@ def oidc_callback():
     
     # Handle authorization response
     try:
-        redirect_uri = url_for('oidc_callback', _external=True)
+        # Use the configured redirect URI
+        redirect_uri = app.config['OIDC_REDIRECT_URI']
         app.logger.info(f'OIDC callback - redirect_uri: {redirect_uri}')
         app.logger.info(f'OIDC callback - request.url: {request.url}')
         
