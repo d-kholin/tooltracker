@@ -191,30 +191,37 @@ class OIDCAuth:
         self.app.logger.info(f"Token exchange request to: {token_url}")
         
         try:
-            resp = requests.post(token_url, data=token_data, headers=headers)
+            resp = requests.post(token_url, data=token_data, headers=headers, timeout=10)
             self.app.logger.info(f"Token exchange response status: {resp.status_code}")
             self.app.logger.info(f"Token exchange response headers: {dict(resp.headers)}")
-            
+
             if resp.status_code != 200:
                 self.app.logger.error(f"Token exchange failed with status {resp.status_code}")
                 self.app.logger.error(f"Response content: {resp.text}")
-            
+
             resp.raise_for_status()
             return resp.json()
         except requests.exceptions.HTTPError as e:
             self.app.logger.error(f"Token exchange failed: {e}")
-            self.app.logger.error(f"Response content: {resp.text}")
+            self.app.logger.error(f"Response content: {e.response.text if e.response is not None else 'no response'}")
+            raise
+        except requests.exceptions.RequestException as e:
+            self.app.logger.error(f"Token exchange request failed: {e}")
             raise
     
     def get_userinfo(self, access_token):
         """Get user information from OIDC provider"""
         if not self.oidc_config or not self.oidc_config.get('userinfo_endpoint'):
             return None
-        
+
         headers = {'Authorization': f'Bearer {access_token}'}
-        resp = requests.get(self.oidc_config['userinfo_endpoint'], headers=headers)
-        resp.raise_for_status()
-        return resp.json()
+        try:
+            resp = requests.get(self.oidc_config['userinfo_endpoint'], headers=headers, timeout=10)
+            resp.raise_for_status()
+            return resp.json()
+        except requests.exceptions.RequestException as e:
+            self.app.logger.error(f"Userinfo fetch failed: {e}")
+            raise
 
 def create_or_update_user(userinfo):
     """Create or update user in database"""
