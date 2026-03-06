@@ -1,14 +1,16 @@
 import os
 import sqlite3
 import datetime
+from datetime import timedelta
 import uuid
 import secrets
 import csv
 import io
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_file, abort
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_wtf.csrf import CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from config import config
 from auth import User, OIDCAuth, init_auth_db, create_or_update_user, auth_required
 
@@ -18,6 +20,9 @@ app_config = config[config_name]
 
 app = Flask(__name__)
 app.config.from_object(app_config)
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
+
+csrf = CSRFProtect(app)
 
 # Configure ProxyFix for reverse proxy support
 # This helps Flask understand the original request scheme when behind a reverse proxy
@@ -61,11 +66,11 @@ def init_db():
     # Ensure the upload folder exists and has proper permissions
     if not os.path.exists(app.config['UPLOAD_FOLDER']):
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-        print(f"Created upload folder: {app.config['UPLOAD_FOLDER']}")
-    
+        app.logger.info(f"Created upload folder: {app.config['UPLOAD_FOLDER']}")
+
     # Ensure the folder is writable
     if not os.access(app.config['UPLOAD_FOLDER'], os.W_OK):
-        print(f"Warning: Upload folder {app.config['UPLOAD_FOLDER']} is not writable")
+        app.logger.warning(f"Upload folder {app.config['UPLOAD_FOLDER']} is not writable")
     
     with get_conn() as conn:
         c = conn.cursor()
@@ -216,56 +221,56 @@ def migrate_tools_table():
                 try:
                     c.execute("ALTER TABLE tools ADD COLUMN brand TEXT")
                     migrations_applied.append("brand")
-                    print("✓ Added brand column to tools table")
+                    app.logger.info("Added brand column to tools table")
                 except sqlite3.OperationalError as e:
-                    print(f"Error adding brand column: {e}")
+                    app.logger.error(f"Error adding brand column: {e}")
             
             # Add model_number column if it doesn't exist
             if 'model_number' not in columns:
                 try:
                     c.execute("ALTER TABLE tools ADD COLUMN model_number TEXT")
                     migrations_applied.append("model_number")
-                    print("✓ Added model_number column to tools table")
+                    app.logger.info("Added model_number column to tools table")
                 except sqlite3.OperationalError as e:
-                    print(f"Error adding model_number column: {e}")
+                    app.logger.error(f"Error adding model_number column: {e}")
             
             # Add serial_number column if it doesn't exist
             if 'serial_number' not in columns:
                 try:
                     c.execute("ALTER TABLE tools ADD COLUMN serial_number TEXT")
                     migrations_applied.append("serial_number")
-                    print("✓ Added serial_number column to tools table")
+                    app.logger.info("Added serial_number column to tools table")
                 except sqlite3.OperationalError as e:
-                    print(f"Error adding serial_number column: {e}")
+                    app.logger.error(f"Error adding serial_number column: {e}")
             
             # Add created_at column if it doesn't exist
             if 'created_at' not in columns:
                 try:
                     c.execute("ALTER TABLE tools ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
                     migrations_applied.append("created_at")
-                    print("✓ Added created_at column to tools table")
+                    app.logger.info("Added created_at column to tools table")
                 except sqlite3.OperationalError as e:
-                    print(f"Error adding created_at column: {e}")
+                    app.logger.error(f"Error adding created_at column: {e}")
             
             # Add acquisition_date column if it doesn't exist
             if 'acquisition_date' not in columns:
                 try:
                     c.execute("ALTER TABLE tools ADD COLUMN acquisition_date TEXT")
                     migrations_applied.append("acquisition_date")
-                    print("✓ Added acquisition_date column to tools table")
+                    app.logger.info("Added acquisition_date column to tools table")
                 except sqlite3.OperationalError as e:
-                    print(f"Error adding acquisition_date column: {e}")
+                    app.logger.error(f"Error adding acquisition_date column: {e}")
             
             if migrations_applied:
                 conn.commit()
-                print(f"✓ Migration completed successfully. Added columns: {', '.join(migrations_applied)}")
+                app.logger.info(f"Migration completed. Added columns: {', '.join(migrations_applied)}")
             else:
-                print("✓ No migration needed - all columns already exist")
+                app.logger.info("No migration needed - all columns already exist")
                 
             return True
                 
     except Exception as e:
-        print(f"Error during migration: {e}")
+        app.logger.error(f"Error during migration: {e}")
         return False
 
 # Database initialization will be done in app context
@@ -321,7 +326,7 @@ def optimize_image(image_file):
             
             # Resize the image
             img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-            print(f"Resized image from {original_width}x{original_height} to {new_width}x{new_height}")
+            app.logger.debug(f"Resized image from {original_width}x{original_height} to {new_width}x{new_height}")
         
         # Save optimized image to bytes
         output = io.BytesIO()
@@ -339,8 +344,8 @@ def optimize_image(image_file):
         output.seek(0)
         return output, extension
         
-    except Exception as e:
-        print(f"Error optimizing image: {e}")
+    except (IOError, OSError, UnidentifiedImageError) as e:
+        app.logger.error(f"Error optimizing image: {e}")
         return None, None
 
 def validate_image_file(image_file):
@@ -384,8 +389,7 @@ def login():
     auth_url = oidc_auth.get_authorization_url(redirect_uri, state)
     
     if not auth_url:
-        flash('OIDC authentication not configured properly')
-        return render_template('login.html', error='Authentication not configured')
+        return render_template('login.html', error='Authentication not configured'), 500
     
     return redirect(auth_url)
 
@@ -393,7 +397,8 @@ def login():
 def oidc_callback():
     # Verify state parameter
     state = session.get('oauth_state')
-    if not state or state != request.args.get('state'):
+    request_state = request.args.get('state', '')
+    if not state or not secrets.compare_digest(state, request_state):
         app.logger.error('Invalid state parameter - OAuth state mismatch detected')
         flash('Invalid state parameter')
         return redirect(url_for('login'))
@@ -456,6 +461,11 @@ def logout():
 @app.route('/health')
 def health():
     """Health check endpoint for Docker"""
+    try:
+        with get_conn() as conn:
+            conn.execute('SELECT 1')
+    except Exception:
+        return jsonify({'status': 'unhealthy', 'service': 'tooltracker'}), 500
     return jsonify({'status': 'healthy', 'service': 'tooltracker'}), 200
 
 @app.route('/')
@@ -476,9 +486,12 @@ def people():
 
 @app.route('/api/tools', methods=['GET', 'POST'])
 @auth_required
+@csrf.exempt
 def api_tools():
     if request.method == 'POST':
-        data = request.get_json(force=True)
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'JSON body required'}), 400
         name = data.get('name', '').strip()
         if not name:
             return jsonify({'error': 'name required'}), 400
@@ -491,7 +504,10 @@ def api_tools():
             tool_id = c.lastrowid
             conn.commit()
             c.execute("SELECT id, name FROM tools WHERE id=?", (tool_id,))
-            tool = dict(c.fetchone())
+            row = c.fetchone()
+            if not row:
+                return jsonify({'error': 'failed to retrieve created tool'}), 500
+            tool = dict(row)
         return jsonify(tool), 201
 
     # Get query parameters for pagination and filtering
@@ -593,10 +609,17 @@ def api_brands():
 @auth_required
 def add_tool():
     if request.method == 'POST':
-        name = request.form['name']
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash('Tool name is required.')
+            return render_template('add_tool.html')
         description = request.form.get('description', '')
-        value_raw = request.form.get('value')
-        value = float(value_raw) if value_raw else 0
+        value_raw = request.form.get('value', '').strip()
+        try:
+            value = float(value_raw) if value_raw else 0
+        except ValueError:
+            flash('Invalid value: must be a number.')
+            return render_template('add_tool.html')
         image_file = request.files.get('image')
         image_path = None
         if image_file and image_file.filename:
@@ -605,30 +628,30 @@ def add_tool():
             if not is_valid:
                 flash(error_message)
                 return render_template('add_tool.html')
-            
+
             try:
                 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-                
+
                 # Optimize the image
                 optimized_image, extension = optimize_image(image_file)
                 if not optimized_image:
                     flash('Error processing image. Please try again.')
                     return render_template('add_tool.html')
-                
+
                 # Generate unique filename with correct extension
                 unique_filename = generate_unique_filename(f"image{extension}")
                 save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-                
+
                 # Save the optimized image
                 with open(save_path, 'wb') as f:
                     f.write(optimized_image.getvalue())
-                
+
                 # Store relative path for database
                 image_path = os.path.join('images', unique_filename)
-                print(f"Optimized image uploaded successfully: {unique_filename}")
-                
-            except Exception as e:
-                print(f"Error uploading image: {e}")
+                app.logger.debug(f"Optimized image uploaded successfully: {unique_filename}")
+
+            except (IOError, OSError, UnidentifiedImageError) as e:
+                app.logger.error(f"Error uploading image: {e}")
                 image_path = None
                 flash('Error uploading image. Please try again.')
         with get_conn() as conn:
@@ -651,20 +674,14 @@ def add_tool():
 @auth_required
 def add_person():
     if request.method == 'POST':
-        name = request.form['name']
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash('Person name is required.')
+            return render_template('add_person.html')
         contact_info = request.form.get('contact_info', '')
-        
-        # Debug: Print current user info
-        print(f"Adding person: {name}, contact: {contact_info}, user: {current_user.id if current_user.is_authenticated else 'Not authenticated'}")
-        
+
         with get_conn() as conn:
             c = conn.cursor()
-            
-            # Debug: Check what people already exist for this user
-            c.execute("SELECT id, name FROM people WHERE created_by = ?", (current_user.id,))
-            existing_people = c.fetchall()
-            print(f"Existing people for user {current_user.id}: {[p['name'] for p in existing_people]}")
-            
             try:
                 c.execute(
                     "INSERT INTO people (name, contact_info, created_by) VALUES (?, ?, ?)",
@@ -672,14 +689,12 @@ def add_person():
                 )
                 conn.commit()
                 flash('Person added successfully!')
-                print(f"Successfully added person: {name}")
                 return redirect(url_for('people'))
-            except sqlite3.IntegrityError as e:
-                print(f"IntegrityError when adding person: {e}")
+            except sqlite3.IntegrityError:
                 flash('Person already exists')
             except Exception as e:
-                print(f"Unexpected error when adding person: {e}")
-                flash(f'Error adding person: {str(e)}')
+                app.logger.error(f"Unexpected error when adding person: {e}")
+                flash('Error adding person. Please try again.')
         return render_template('add_person.html')
     return render_template('add_person.html')
 
@@ -692,9 +707,9 @@ def delete_tool_image(image_path):
             full_path = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(image_path))
             if os.path.exists(full_path):
                 os.remove(full_path)
-                print(f"Deleted image file: {full_path}")
-        except Exception as e:
-            print(f"Error deleting image file: {e}")
+                app.logger.debug(f"Deleted image file: {full_path}")
+        except (IOError, OSError) as e:
+            app.logger.error(f"Error deleting image file: {e}")
 
 
 @app.route('/delete/<int:tool_id>', methods=['POST'])
@@ -714,6 +729,7 @@ def delete_tool(tool_id):
         )
         if c.fetchone()[0] > 0:
             flash('Cannot delete tool: it is currently lent out')
+            return redirect(url_for('index'))
         else:
             # Get the image path before deleting the tool
             c.execute("SELECT image_path FROM tools WHERE id=?", (tool_id,))
@@ -797,12 +813,14 @@ def return_tool(tool_id):
             (tool_id,),
         )
         row = c.fetchone()
-        if row:
-            returned_on = datetime.date.today().isoformat()
-            c.execute(
-                "UPDATE loans SET returned_on=? WHERE id=?",
-                (returned_on, row[0]),
-            )
+        if not row:
+            flash('No active loan found for this tool.')
+            return redirect(url_for('index'))
+        returned_on = datetime.date.today().isoformat()
+        c.execute(
+            "UPDATE loans SET returned_on=? WHERE id=?",
+            (returned_on, row[0]),
+        )
         conn.commit()
     return redirect(url_for('index'))
 
@@ -908,7 +926,7 @@ def person_detail(person_id):
         c.execute("SELECT id, name, contact_info FROM people WHERE id=? AND created_by=?", (person_id, current_user.id))
         person = c.fetchone()
         if not person:
-            return redirect(url_for('people'))
+            abort(404)
         
         # Get all loans for this person
         c.execute(
@@ -968,7 +986,10 @@ def edit_person(person_id):
             return redirect(url_for('people'))
         
         if request.method == 'POST':
-            name = request.form['name']
+            name = request.form.get('name', '').strip()
+            if not name:
+                flash('Person name is required.')
+                return redirect(url_for('edit_person', person_id=person_id))
             contact_info = request.form.get('contact_info', '')
             try:
                 c.execute(
@@ -1204,8 +1225,8 @@ def tool_detail(tool_id):
         )
         tool = c.fetchone()
         if not tool:
-            return redirect(url_for('index'))
-        
+            abort(404)
+
         # Get lending history
         c.execute(
             """
@@ -1263,54 +1284,58 @@ def edit_tool(tool_id):
             return redirect(url_for('index'))
         
         if request.method == 'POST':
-            name = request.form['name']
+            name = request.form.get('name', '').strip()
+            if not name:
+                flash('Tool name is required.')
+                return redirect(url_for('edit_tool', tool_id=tool_id))
             description = request.form.get('description', '')
-            value_raw = request.form.get('value')
-            value = float(value_raw) if value_raw else 0
+            value_raw = request.form.get('value', '').strip()
+            try:
+                value = float(value_raw) if value_raw else 0
+            except ValueError:
+                flash('Invalid value: must be a number.')
+                return redirect(url_for('edit_tool', tool_id=tool_id))
             brand = request.form.get('brand', '')
             model_number = request.form.get('model_number', '')
             serial_number = request.form.get('serial_number', '')
             acquisition_date = request.form.get('acquisition_date', '')
             image_file = request.files.get('image')
+            old_image_path = None
             if image_file and image_file.filename:
                 # Validate image file
                 is_valid, error_message = validate_image_file(image_file)
                 if not is_valid:
                     flash(error_message)
                     return redirect(url_for('edit_tool', tool_id=tool_id))
-                
+
                 try:
                     # Get the old image path before updating
                     c.execute("SELECT image_path FROM tools WHERE id=?", (tool_id,))
                     old_tool = c.fetchone()
                     old_image_path = old_tool['image_path'] if old_tool else None
-                    
+
                     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-                    
+
                     # Optimize the image
                     optimized_image, extension = optimize_image(image_file)
                     if not optimized_image:
                         flash('Error processing image. Please try again.')
                         return redirect(url_for('edit_tool', tool_id=tool_id))
-                    
+
                     # Generate unique filename with correct extension
                     unique_filename = generate_unique_filename(f"image{extension}")
                     save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-                    
+
                     # Save the optimized image
                     with open(save_path, 'wb') as f:
                         f.write(optimized_image.getvalue())
-                    
+
                     # Store relative path for database
                     image_path = os.path.join('images', unique_filename)
-                    print(f"Optimized image updated successfully: {unique_filename}")
-                    
-                    # Delete the old image if it exists
-                    if old_image_path:
-                        delete_tool_image(old_image_path)
-                        
-                except Exception as e:
-                    print(f"Error updating image: {e}")
+                    app.logger.debug(f"Optimized image updated successfully: {unique_filename}")
+
+                except (IOError, OSError, UnidentifiedImageError) as e:
+                    app.logger.error(f"Error updating image: {e}")
                     image_path = None
                     flash('Error updating image. Please try again.')
                 c.execute(
@@ -1323,6 +1348,9 @@ def edit_tool(tool_id):
                     (name, description, value, brand, model_number, serial_number, acquisition_date, tool_id),
                 )
             conn.commit()
+            # Delete old image only after successful DB commit
+            if old_image_path:
+                delete_tool_image(old_image_path)
             return redirect(url_for('index'))
         c.execute("SELECT * FROM tools WHERE id=? AND created_by=?", (tool_id, current_user.id))
         tool = c.fetchone()
@@ -1446,92 +1474,95 @@ def import_tools():
         
         try:
             # Read CSV file
-            stream = io.StringIO(file.stream.read().decode('utf-8'))
+            try:
+                stream = io.StringIO(file.stream.read().decode('utf-8'))
+            except UnicodeDecodeError:
+                flash('CSV file must be UTF-8 encoded. Please check your file and try again.')
+                return redirect(url_for('user_settings'))
+
             reader = csv.DictReader(stream)
-            
+
             with get_conn() as conn:
                 c = conn.cursor()
-                
+
                 # Check if created_at column exists in database
                 c.execute("PRAGMA table_info(tools)")
                 columns = [col[1] for col in c.fetchall()]
                 has_created_at = 'created_at' in columns
-                
+
                 # Validate headers based on database schema
                 if has_created_at:
                     expected_headers = ['Name', 'Description', 'Value', 'Brand', 'Model Number', 'Serial Number', 'Acquisition Date', 'Created At']
                 else:
                     expected_headers = ['Name', 'Description', 'Value', 'Brand', 'Model Number', 'Serial Number', 'Acquisition Date']
-                
+
                 if not all(header in reader.fieldnames for header in expected_headers):
                     flash('Invalid CSV format. Please use the template provided.')
                     return redirect(url_for('user_settings'))
-                
+
                 imported_count = 0
                 errors = []
-                
+
                 for row_num, row in enumerate(reader, start=2):  # Start at 2 because row 1 is header
-                    try:
-                        # Validate required fields
-                        if not row['Name'].strip():
-                            errors.append(f'Row {row_num}: Name is required')
+                    # Validate required fields
+                    if not row['Name'].strip():
+                        errors.append(f'Row {row_num}: Name is required')
+                        continue
+
+                    # Parse value
+                    value = 0.0
+                    if row['Value'].strip():
+                        try:
+                            value = float(row['Value'])
+                        except ValueError:
+                            errors.append(f'Row {row_num}: Invalid value format')
                             continue
-                        
-                        # Parse value
-                        value = 0.0
-                        if row['Value'].strip():
-                            try:
-                                value = float(row['Value'])
-                            except ValueError:
-                                errors.append(f'Row {row_num}: Invalid value format')
-                                continue
-                        
-                        # Insert tool based on available columns
-                        if has_created_at:
-                            c.execute("""
-                                INSERT INTO tools (name, description, value, brand, model_number, serial_number, acquisition_date, created_by, created_at)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                            """, (
-                                row['Name'].strip(),
-                                row['Description'].strip() if row['Description'] else '',
-                                value,
-                                row['Brand'].strip() if row['Brand'] else '',
-                                row['Model Number'].strip() if row['Model Number'] else '',
-                                row['Serial Number'].strip() if row['Serial Number'] else '',
-                                row['Acquisition Date'].strip() if row['Acquisition Date'] else '',
-                                current_user.id,
-                                row['Created At'] if row['Created At'] else datetime.datetime.now().isoformat()
-                            ))
-                        else:
-                            c.execute("""
-                                INSERT INTO tools (name, description, value, brand, model_number, serial_number, acquisition_date, created_by)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                            """, (
-                                row['Name'].strip(),
-                                row['Description'].strip() if row['Description'] else '',
-                                value,
-                                row['Brand'].strip() if row['Brand'] else '',
-                                row['Model Number'].strip() if row['Model Number'] else '',
-                                row['Serial Number'].strip() if row['Serial Number'] else '',
-                                row['Acquisition Date'].strip() if row['Acquisition Date'] else '',
-                                current_user.id
-                            ))
-                        imported_count += 1
-                        
-                    except Exception as e:
-                        errors.append(f'Row {row_num}: {str(e)}')
-                
-                conn.commit()
-                
+
+                    # Insert tool based on available columns
+                    if has_created_at:
+                        c.execute("""
+                            INSERT INTO tools (name, description, value, brand, model_number, serial_number, acquisition_date, created_by, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (
+                            row['Name'].strip(),
+                            row['Description'].strip() if row['Description'] else '',
+                            value,
+                            row['Brand'].strip() if row['Brand'] else '',
+                            row['Model Number'].strip() if row['Model Number'] else '',
+                            row['Serial Number'].strip() if row['Serial Number'] else '',
+                            row['Acquisition Date'].strip() if row['Acquisition Date'] else '',
+                            current_user.id,
+                            row['Created At'] if row['Created At'] else datetime.datetime.now().isoformat()
+                        ))
+                    else:
+                        c.execute("""
+                            INSERT INTO tools (name, description, value, brand, model_number, serial_number, acquisition_date, created_by)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (
+                            row['Name'].strip(),
+                            row['Description'].strip() if row['Description'] else '',
+                            value,
+                            row['Brand'].strip() if row['Brand'] else '',
+                            row['Model Number'].strip() if row['Model Number'] else '',
+                            row['Serial Number'].strip() if row['Serial Number'] else '',
+                            row['Acquisition Date'].strip() if row['Acquisition Date'] else '',
+                            current_user.id
+                        ))
+                    imported_count += 1
+
                 if errors:
-                    flash(f'Import completed with {len(errors)} errors. {imported_count} tools imported successfully.')
+                    # Roll back the entire import — don't leave partial state
+                    conn.rollback()
+                    flash(f'Import failed with {len(errors)} error(s). No tools were imported.')
                     for error in errors[:5]:  # Show first 5 errors
                         flash(f'Error: {error}')
                 else:
+                    conn.commit()
                     flash(f'Successfully imported {imported_count} tools!')
-                
+
         except Exception as e:
-            flash(f'Error importing tools: {str(e)}')
+            app.logger.error(f"Error importing tools: {e}")
+            flash('Error importing tools. Please check the file and try again.')
         
         return redirect(url_for('user_settings'))
     
