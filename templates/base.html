@@ -136,6 +136,7 @@
       padding: 0.5rem 1rem;
       font-size: 0.75rem;
       border-radius: 0.5rem;
+      min-height: 2.75rem;
     }
     
     .btn-link {
@@ -423,10 +424,10 @@
                 </div>
               {% endif %}
               <div class="flex items-center space-x-2">
-                <a href="{{ url_for('user_settings') }}" class="text-gray-700 hover:text-brand font-medium transition-colors">
+                <a href="{{ url_for('user_settings') }}" class="hidden md:inline text-gray-700 hover:text-brand font-medium transition-colors">
                   {{ current_user.name }}
                 </a>
-                <a href="{{ url_for('logout') }}" class="text-gray-600 hover:text-red-600 font-medium transition-colors">
+                <a href="{{ url_for('logout') }}" class="hidden md:block text-gray-600 hover:text-red-600 font-medium transition-colors">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                   </svg>
@@ -440,41 +441,12 @@
           {% endif %}
         </div>
 
-        <!-- Mobile menu button -->
-        <div class="md:hidden">
-          <button type="button" class="text-gray-600 hover:text-brand p-2" id="mobile-menu-button">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <!-- Mobile menu -->
-      <div class="md:hidden hidden" id="mobile-menu">
-        <div class="px-2 pt-2 pb-3 space-y-1 border-t border-gray-200">
-          <a href="{{ url_for('index') }}" class="block px-3 py-2 text-gray-600 hover:text-brand font-medium">Tools</a>
-          <a href="{{ url_for('people') }}" class="block px-3 py-2 text-gray-600 hover:text-brand font-medium">People</a>
-          <a href="{{ url_for('report') }}" class="block px-3 py-2 text-gray-600 hover:text-brand font-medium">Report</a>
-          
-          
-          {% if current_user.is_authenticated %}
-            <div class="border-t border-gray-200 pt-2 mt-2">
-              <a href="{{ url_for('user_settings') }}" class="block px-3 py-2 text-gray-700 hover:text-brand font-medium">{{ current_user.name }}</a>
-              <a href="{{ url_for('logout') }}" class="block px-3 py-2 text-red-600 hover:text-red-800 font-medium">Sign Out</a>
-            </div>
-          {% else %}
-            <div class="border-t border-gray-200 pt-2 mt-2">
-              <a href="{{ url_for('login') }}" class="block px-3 py-2 bg-brand text-white rounded font-medium">Sign In</a>
-            </div>
-          {% endif %}
-        </div>
       </div>
     </div>
   </header>
 
   <!-- Main Content -->
-  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-20 md:pb-8">
     {% with messages = get_flashed_messages() %}
       {% if messages %}
         {% for message in messages %}
@@ -516,13 +488,122 @@
     });
   </script>
 
+  {% if current_user.is_authenticated %}
+  <!-- Bottom Navigation Bar (mobile only) -->
+  <nav class="fixed bottom-0 inset-x-0 md:hidden bg-white border-t border-gray-200 z-40 h-16 flex" aria-label="Mobile navigation">
+    <!-- Tools -->
+    <a href="{{ url_for('index') }}" class="bottom-nav-item flex-1 flex flex-col items-center justify-center gap-1 text-xs font-medium transition-colors" data-path="/">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+      </svg>
+      <span>Tools</span>
+    </a>
+    <!-- People -->
+    <a href="{{ url_for('people') }}" class="bottom-nav-item flex-1 flex flex-col items-center justify-center gap-1 text-xs font-medium transition-colors" data-path="/people">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
+      </svg>
+      <span>People</span>
+    </a>
+    <!-- Add (raised) -->
+    <a href="{{ url_for('add_tool') }}" class="flex-1 flex flex-col items-center justify-center" aria-label="Add tool">
+      <span class="w-12 h-12 -mt-4 bg-brand rounded-full flex items-center justify-center shadow-lg shadow-brand/30">
+        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+        </svg>
+      </span>
+    </a>
+    <!-- Report -->
+    <a href="{{ url_for('report') }}" class="bottom-nav-item flex-1 flex flex-col items-center justify-center gap-1 text-xs font-medium transition-colors" data-path="/report">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+      </svg>
+      <span>Report</span>
+    </a>
+    <!-- More -->
+    <button type="button" id="bottom-nav-more" class="flex-1 flex flex-col items-center justify-center gap-1 text-xs font-medium text-gray-500 transition-colors">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+      </svg>
+      <span>More</span>
+    </button>
+  </nav>
+
+  <!-- "More" slide-up sheet -->
+  <div id="more-sheet-overlay" class="fixed inset-0 bg-black/40 z-50 hidden" aria-hidden="true"></div>
+  <div id="more-sheet" class="fixed bottom-0 inset-x-0 z-50 bg-white rounded-t-2xl shadow-2xl translate-y-full transition-transform duration-300 md:hidden">
+    <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b border-gray-100">
+      <div class="flex items-center gap-3">
+        {% if current_user.picture %}
+          <img src="{{ current_user.picture }}" alt="{{ current_user.name }}" class="w-9 h-9 rounded-full">
+        {% else %}
+          <div class="w-9 h-9 bg-brand rounded-full flex items-center justify-center">
+            <span class="text-white text-sm font-semibold">{{ current_user.name[0].upper() }}</span>
+          </div>
+        {% endif %}
+        <span class="font-semibold text-gray-900">{{ current_user.name }}</span>
+      </div>
+      <button type="button" id="more-sheet-close" class="text-gray-400 hover:text-gray-600 p-1" aria-label="Close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+    <div class="px-4 py-3 space-y-1 pb-8">
+      <a href="{{ url_for('user_settings') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl text-gray-700 hover:bg-gray-50 font-medium transition-colors">
+        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+        </svg>
+        Settings
+      </a>
+      <a href="{{ url_for('logout') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl text-red-600 hover:bg-red-50 font-medium transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+        </svg>
+        Sign Out
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
   <script src="{{ url_for('static', filename='js/brand-logos.js') }}"></script>
   <script>
-    // Mobile menu toggle
-    document.getElementById('mobile-menu-button').addEventListener('click', function() {
-      const mobileMenu = document.getElementById('mobile-menu');
-      mobileMenu.classList.toggle('hidden');
-    });
+    // Bottom nav active state
+    (function() {
+      const path = window.location.pathname;
+      document.querySelectorAll('.bottom-nav-item').forEach(function(el) {
+        const elPath = el.getAttribute('data-path');
+        if (elPath === '/' ? path === '/' : path.startsWith(elPath)) {
+          el.classList.add('text-brand');
+          el.classList.remove('text-gray-500');
+        } else {
+          el.classList.add('text-gray-500');
+        }
+      });
+    })();
+
+    // More sheet
+    (function() {
+      const btn = document.getElementById('bottom-nav-more');
+      const sheet = document.getElementById('more-sheet');
+      const overlay = document.getElementById('more-sheet-overlay');
+      const closeBtn = document.getElementById('more-sheet-close');
+      if (!btn || !sheet || !overlay) return;
+
+      function openSheet() {
+        overlay.classList.remove('hidden');
+        sheet.classList.remove('translate-y-full');
+      }
+      function closeSheet() {
+        sheet.classList.add('translate-y-full');
+        overlay.classList.add('hidden');
+      }
+
+      btn.addEventListener('click', openSheet);
+      overlay.addEventListener('click', closeSheet);
+      if (closeBtn) closeBtn.addEventListener('click', closeSheet);
+    })();
   </script>
 </body>
 </html>

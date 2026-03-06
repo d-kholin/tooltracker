@@ -62,7 +62,7 @@ const ToolCard = ({ tool }) => {
                 <img 
                   src={`/data/${tool.image_path}`} 
                   alt={tool.name}
-                  className="w-16 h-16 object-cover rounded-lg border border-gray-200 group-hover:border-brand transition-colors"
+                  className="w-20 h-20 sm:w-16 sm:h-16 object-cover rounded-lg border border-gray-200 group-hover:border-brand transition-colors"
                 />
                 {/* Show badge below image on mobile only */}
                 <div className="md:hidden mt-2">
@@ -226,7 +226,7 @@ const SearchBar = ({ searchTerm, onSearchChange }) => (
     </div>
     <input
       type="text"
-              placeholder="Search tools by name, description, brand, model, serial number, or borrower..."
+              placeholder="Search tools by name, brand, model, or borrower..."
       value={searchTerm}
       onChange={(e) => onSearchChange(e.target.value)}
       className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-brand focus:border-brand sm:text-sm"
@@ -468,10 +468,10 @@ const App = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Tools</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Tools</h1>
           <p className="text-gray-600 mt-1">Manage and track your tools and equipment</p>
         </div>
-        <a href="/add" className="btn btn-primary">
+        <a href="/add" className="hidden md:inline-flex btn btn-primary">
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
           </svg>
