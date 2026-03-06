@@ -8,9 +8,15 @@ class Config:
     """Base configuration class"""
     SECRET_KEY = os.environ.get('SECRET_KEY')
     if not SECRET_KEY:
+        if os.environ.get('FLASK_ENV') == 'production':
+            raise RuntimeError("SECRET_KEY must be set in production")
         import logging
         logging.warning("SECRET_KEY not set — generating a random key. All sessions will be invalidated on restart!")
         SECRET_KEY = os.urandom(24).hex()
+
+    # Session cookie hardening (Secure flag overridden per environment below)
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
     TOOLTRACKER_DB = os.environ.get('TOOLTRACKER_DB', 'tooltracker.db')
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join('static', 'images'))
     
@@ -44,11 +50,13 @@ class DevelopmentConfig(Config):
     """Development configuration"""
     DEBUG = True
     FLASK_ENV = 'development'
+    SESSION_COOKIE_SECURE = False
 
 class ProductionConfig(Config):
     """Production configuration"""
     DEBUG = False
     FLASK_ENV = 'production'
+    SESSION_COOKIE_SECURE = True
 
 # Configuration dictionary
 config = {
