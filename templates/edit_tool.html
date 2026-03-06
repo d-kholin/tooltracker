@@ -10,6 +10,7 @@
 
   <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
     <form method="post" enctype="multipart/form-data" class="space-y-6">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div>
         <label class="form-label">Tool Name *</label>
         <input type="text" class="form-control w-full" name="name" value="{{ tool.name }}" required>
@@ -311,8 +312,8 @@ function hideDeleteConfirmation() {
 function updateDeleteButton() {
   const confirmationInput = document.getElementById('deleteConfirmation');
   const deleteButton = document.querySelector('#deleteModal .btn-danger');
-  const toolName = '{{ tool.name }}';
-  
+  const toolName = {{ tool.name | tojson }};
+
   if (confirmationInput.value === toolName) {
     deleteButton.disabled = false;
     deleteButton.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -326,13 +327,17 @@ document.getElementById('deleteConfirmation').addEventListener('input', updateDe
 
 function confirmDelete() {
   const confirmationInput = document.getElementById('deleteConfirmation');
-  const toolName = '{{ tool.name }}';
-  
+  const toolName = {{ tool.name | tojson }};
+
   if (confirmationInput.value === toolName) {
-    // Create and submit the delete form
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = '/delete/{{ tool.id }}';
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrf_token';
+    csrfInput.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    form.appendChild(csrfInput);
     document.body.appendChild(form);
     form.submit();
   }

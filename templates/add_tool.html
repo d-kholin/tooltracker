@@ -10,6 +10,7 @@
 
   <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
     <form method="post" enctype="multipart/form-data" class="space-y-6">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div>
         <label class="form-label">Tool Name *</label>
         <input type="text" class="form-control w-full" name="name" placeholder="e.g., Power Drill, Hammer, Ladder" required>

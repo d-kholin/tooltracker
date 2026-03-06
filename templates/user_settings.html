@@ -73,6 +73,7 @@
     </div>
     
     <form action="{{ url_for('import_tools') }}" method="post" enctype="multipart/form-data" class="space-y-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div>
         <label for="csv_file" class="form-label">Select CSV File</label>
         <input type="file" id="csv_file" name="csv_file" accept=".csv" required
