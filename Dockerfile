@@ -27,10 +27,13 @@ RUN echo "Build Date: ${BUILD_DATE:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}" > /app/bu
     echo "Git Commit: ${VCS_REF:-unknown}" >> /app/build-info.txt && \
     echo "Cache Bust: ${CACHE_BUST:-unknown}" >> /app/build-info.txt
 
+RUN useradd -m -u 1000 appuser && chown -R appuser /app
+USER appuser
+
 EXPOSE 5000
 
 # Add health check to monitor container health
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "60", "--preload", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "60", "--preload", "--access-logfile", "-", "--error-logfile", "-", "--log-level", "info", "app:app"]
