@@ -6,7 +6,11 @@ load_dotenv()
 
 class Config:
     """Base configuration class"""
-    SECRET_KEY = os.environ.get('SECRET_KEY') or os.urandom(24).hex()
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    if not SECRET_KEY:
+        import logging
+        logging.warning("SECRET_KEY not set — generating a random key. All sessions will be invalidated on restart!")
+        SECRET_KEY = os.urandom(24).hex()
     TOOLTRACKER_DB = os.environ.get('TOOLTRACKER_DB', 'tooltracker.db')
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join('static', 'images'))
     

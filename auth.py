@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import time
 from functools import wraps
 from flask import Flask, request, redirect, url_for, session, flash, current_app
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
@@ -58,17 +59,23 @@ def init_auth_db(app=None):
         """)
         conn.commit()
 
+OIDC_DISCOVERY_TIMEOUT = 5  # seconds
+OIDC_RETRY_COOLDOWN = 60    # seconds between retry attempts after failure
+
+
 class OIDCAuth:
     """OIDC Authentication handler"""
-    
+
     def __init__(self, app):
         self.app = app
         self.client = None
         self.oidc_config = None
+        self._last_setup_attempt = 0
         self.setup_oidc()
     
     def setup_oidc(self):
         """Setup OIDC client and configuration"""
+        self._last_setup_attempt = time.monotonic()
         if not self.app.config.get('OIDC_CLIENT_ID'):
             self.app.logger.warning("OIDC_CLIENT_ID not configured, authentication disabled")
             return
@@ -86,7 +93,7 @@ class OIDCAuth:
         if self.app.config.get('OIDC_DISCOVERY_URL'):
             try:
                 self.app.logger.info(f"Attempting OIDC discovery at: {self.app.config['OIDC_DISCOVERY_URL']}")
-                resp = requests.get(self.app.config['OIDC_DISCOVERY_URL'])
+                resp = requests.get(self.app.config['OIDC_DISCOVERY_URL'], timeout=OIDC_DISCOVERY_TIMEOUT)
                 resp.raise_for_status()
                 self.oidc_config = resp.json()
                 self.app.logger.info("OIDC configuration discovered successfully")
@@ -105,20 +112,43 @@ class OIDCAuth:
                 'issuer': self.app.config.get('OIDC_ISSUER')
             }
             self.app.logger.info(f"Custom token endpoint: {self.oidc_config.get('token_endpoint')}")
+
+        # Validate that required endpoints are present
+        required = ('authorization_endpoint', 'token_endpoint', 'userinfo_endpoint')
+        if not all(self.oidc_config.get(k) for k in required):
+            missing = [k for k in required if not self.oidc_config.get(k)]
+            self.app.logger.error(
+                f"OIDC configuration incomplete — missing endpoints: {missing}. "
+                "Set OIDC_DISCOVERY_URL or individual OIDC_*_ENDPOINT vars."
+            )
+            self.oidc_config = None
     
     def get_authorization_url(self, redirect_uri, state):
         """Get authorization URL for OIDC login"""
-        if not self.client or not self.oidc_config:
+        # Retry OIDC setup if a previous attempt failed, but at most once per cooldown period
+        if not self.oidc_config and self.app.config.get('OIDC_DISCOVERY_URL'):
+            elapsed = time.monotonic() - self._last_setup_attempt
+            if elapsed >= OIDC_RETRY_COOLDOWN:
+                self.app.logger.info("Retrying OIDC discovery after previous failure")
+                self.setup_oidc()
+            else:
+                self.app.logger.warning(
+                    f"OIDC not configured — retry in {int(OIDC_RETRY_COOLDOWN - elapsed)}s"
+                )
+
+        endpoint = self.oidc_config.get('authorization_endpoint') if self.oidc_config else None
+        if not self.client or not endpoint:
+            self.app.logger.error("OIDC authorization endpoint not configured")
             return None
-        
+
         scopes = self.app.config.get('OIDC_SCOPES', 'openid profile email')
-        self.app.logger.info(f'OIDC authorization endpoint: {self.oidc_config["authorization_endpoint"]}')
+        self.app.logger.info(f'OIDC authorization endpoint: {endpoint}')
         self.app.logger.info(f'OIDC redirect_uri input: {redirect_uri}')
         self.app.logger.info(f'OIDC scopes: {scopes}')
         self.app.logger.info(f'OIDC state: {state}')
-        
+
         auth_url = self.client.prepare_request_uri(
-            self.oidc_config['authorization_endpoint'],
+            endpoint,
             redirect_uri=redirect_uri,
             scope=scopes,
             state=state
@@ -159,8 +189,6 @@ class OIDCAuth:
         headers = {'Content-Type': 'application/x-www-form-urlencoded'}
         
         self.app.logger.info(f"Token exchange request to: {token_url}")
-        self.app.logger.info(f"Token request data: {token_data}")
-        self.app.logger.info(f"Token request headers: {headers}")
         
         try:
             resp = requests.post(token_url, data=token_data, headers=headers)

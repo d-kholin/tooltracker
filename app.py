@@ -862,13 +862,22 @@ def edit_loan(loan_id):
         return redirect(url_for('people'))
     with get_conn() as conn:
         c = conn.cursor()
-        c.execute("SELECT id, name, contact_info FROM people WHERE created_by = ? ORDER BY name", (current_user.id,))
-        people = c.fetchall()
-        print(f"Found {len(people)} people for user {current_user.id}")
-        for person in people:
-            print(f"  - {person['name']} (ID: {person['id']})")
-    
-    return render_template('people.html', people=people)
+        c.execute(
+            """
+            SELECT l.id, l.tool_id, l.lent_on, l.returned_on,
+                   t.name as tool_name, p.name as person_name
+            FROM loans l
+            JOIN tools t ON l.tool_id = t.id
+            JOIN people p ON l.person_id = p.id
+            WHERE l.id=? AND t.created_by=?
+            """,
+            (loan_id, current_user.id)
+        )
+        loan = c.fetchone()
+    if not loan:
+        flash('Loan not found or access denied')
+        return redirect(url_for('index'))
+    return render_template('edit_loan.html', loan=loan)
 
 
 @app.route('/people/<int:person_id>/delete', methods=['POST'])
@@ -1576,14 +1585,23 @@ def download_template():
         return redirect(url_for('user_settings'))
 
 
+# Initialize databases at module level so gunicorn workers also run migrations
+with app.app_context():
+    init_auth_db(app)
+    init_db()
+    migrate_tools_table()
+
+
+@app.errorhandler(404)
+def not_found(e):
+    return render_template('login.html', error='Page not found'), 404
+
+
+@app.errorhandler(500)
+def server_error(e):
+    app.logger.error(f"Server error: {e}")
+    return render_template('login.html', error='An internal error occurred'), 500
+
+
 if __name__ == '__main__':
-    # Initialize databases within app context
-    with app.app_context():
-        init_auth_db(app)
-        init_db()
-        # Migrate tools table to include new fields
-        migrate_tools_table()
-        # Test the people table constraint after initialization
-        test_people_constraint()
-    
     app.run(host='0.0.0.0', port=5000)

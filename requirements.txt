@@ -5,3 +5,4 @@ Flask-OIDC
 python-dotenv
 requests
 oauthlib
+gunicorn
