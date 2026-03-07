@@ -81,7 +81,25 @@
     }
     
     .btn:active {
-      transform: translateY(0);
+      transform: scale(0.97);
+      opacity: 0.85;
+    }
+
+    @media (hover: none) {
+      .btn-primary:hover,
+      .btn-secondary:hover,
+      .btn-danger:hover:not(:disabled) {
+        transform: none;
+      }
+      .btn-primary:hover {
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+      }
+      .btn-secondary:hover {
+        box-shadow: 0 4px 14px rgba(75, 85, 99, 0.25);
+      }
+      .btn-danger:hover:not(:disabled) {
+        box-shadow: 0 4px 14px rgba(220, 38, 38, 0.25);
+      }
     }
     
     .btn:focus {
@@ -391,6 +409,45 @@
         width: 100%;
       }
     }
+
+    /* Keyboard-aware scroll padding for bottom nav */
+    html { scroll-padding-bottom: 5rem; }
+
+    /* Swipe-to-return styles */
+    .swipe-container {
+      position: relative;
+      overflow: hidden;
+    }
+    .swipe-container .swipe-action {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #2563eb;
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.875rem;
+      border-radius: 0 0.75rem 0.75rem 0;
+      opacity: 0;
+      transition: opacity 0.15s;
+      pointer-events: none;
+    }
+    .swipe-container.swiping .swipe-action {
+      opacity: 1;
+    }
+    .swipe-container .swipe-content {
+      position: relative;
+      z-index: 1;
+      background: #fff;
+      transition: transform 0.2s ease-out;
+    }
+    .swipe-container.swiping .swipe-content {
+      transition: none;
+    }
   </style>
 </head>
 <body class="font-inter bg-gray-50 min-h-screen">
@@ -604,6 +661,16 @@
       overlay.addEventListener('click', closeSheet);
       if (closeBtn) closeBtn.addEventListener('click', closeSheet);
     })();
+
+    // Keyboard-aware form scrolling
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', function() {
+        var focused = document.activeElement;
+        if (focused && (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA' || focused.tagName === 'SELECT')) {
+          focused.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+      });
+    }
   </script>
 </body>
 </html>
