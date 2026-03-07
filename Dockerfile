@@ -6,8 +6,8 @@ ARG BUILD_DATE
 ARG VCS_REF
 ARG CACHE_BUST
 
-# Install curl for healthcheck
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# Install curl for healthcheck, gosu for privilege dropping in entrypoint
+RUN apt-get update && apt-get install -y curl gosu && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -28,7 +28,10 @@ RUN echo "Build Date: ${BUILD_DATE:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}" > /app/bu
     echo "Cache Bust: ${CACHE_BUST:-unknown}" >> /app/build-info.txt
 
 RUN useradd -m -u 1000 appuser && chown -R appuser /app && mkdir -p /data/images && chown -R appuser /data
-USER appuser
+# NOTE: no USER appuser here — entrypoint drops to appuser at runtime
+
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 5000
 
@@ -36,4 +39,5 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "60", "--preload", "--access-logfile", "-", "--error-logfile", "-", "--log-level", "info", "app:app"]
