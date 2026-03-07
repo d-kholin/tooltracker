@@ -56,7 +56,7 @@ class ProductionConfig(Config):
     """Production configuration"""
     DEBUG = False
     FLASK_ENV = 'production'
-    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = os.environ.get('APP_URL', 'http://localhost:5000').startswith('https://')
 
 # Configuration dictionary
 config = {

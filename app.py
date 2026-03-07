@@ -49,6 +49,10 @@ oidc_auth = OIDCAuth(app)
 def load_user(user_id):
     return User.get(user_id)
 
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
+
 # Database initialization will be done after functions are defined
 
 # Initialize databases
@@ -377,7 +381,10 @@ def validate_image_file(image_file):
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
-    
+
+    if request.args.get('auth_error'):
+        return render_template('login.html', error='Your session expired during login. Please try again.'), 400
+
     # Generate state for CSRF protection
     state = secrets.token_urlsafe(32)
     session['oauth_state'] = state
@@ -400,8 +407,7 @@ def oidc_callback():
     request_state = request.args.get('state', '')
     if not state or not secrets.compare_digest(state, request_state):
         app.logger.error('Invalid state parameter - OAuth state mismatch detected')
-        flash('Invalid state parameter')
-        return redirect(url_for('login'))
+        return redirect(url_for('login') + '?auth_error=1')
     
     # Clear state from session
     session.pop('oauth_state', None)
@@ -440,6 +446,7 @@ def oidc_callback():
         
         # Log in the user
         login_user(user)
+        session.permanent = True
         flash(f'Welcome, {user.name}!')
         return redirect(url_for('index'))
         
