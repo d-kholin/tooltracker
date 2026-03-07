@@ -27,7 +27,7 @@ RUN echo "Build Date: ${BUILD_DATE:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}" > /app/bu
     echo "Git Commit: ${VCS_REF:-unknown}" >> /app/build-info.txt && \
     echo "Cache Bust: ${CACHE_BUST:-unknown}" >> /app/build-info.txt
 
-RUN useradd -m -u 1000 appuser && chown -R appuser /app
+RUN useradd -m -u 1000 appuser && chown -R appuser /app && mkdir -p /data/images && chown -R appuser /data
 USER appuser
 
 EXPOSE 5000
