@@ -43,6 +43,7 @@ class Config:
 
     # Image optimization constants
     MAX_IMAGE_DIMENSION = 1024
+    THUMBNAIL_DIMENSION = 200
     JPEG_QUALITY = 85
     MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 

@@ -352,6 +352,24 @@ def optimize_image(image_file):
         app.logger.error(f"Error optimizing image: {e}")
         return None, None
 
+def generate_thumbnail(image_path):
+    """Generate a thumbnail version of an image, saved alongside as <name>_thumb.<ext>"""
+    try:
+        img = Image.open(image_path)
+        if img.mode in ('RGBA', 'LA', 'P'):
+            img = img.convert('RGB')
+        dim = app.config.get('THUMBNAIL_DIMENSION', 200)
+        img.thumbnail((dim, dim), Image.Resampling.LANCZOS)
+        base, ext = os.path.splitext(image_path)
+        thumb_path = f"{base}_thumb{ext}"
+        fmt = 'JPEG' if ext.lower() in ('.jpg', '.jpeg') else 'PNG'
+        img.save(thumb_path, format=fmt, quality=app.config['JPEG_QUALITY'], optimize=True)
+        return thumb_path
+    except (IOError, OSError, UnidentifiedImageError) as e:
+        app.logger.error(f"Error generating thumbnail: {e}")
+        return None
+
+
 def validate_image_file(image_file):
     """
     Validate image file size and type
@@ -652,6 +670,9 @@ def add_tool():
                 # Save the optimized image
                 with open(save_path, 'wb') as f:
                     f.write(optimized_image.getvalue())
+
+                # Generate thumbnail for list views
+                generate_thumbnail(save_path)
 
                 # Store relative path for database
                 image_path = os.path.join('images', unique_filename)
@@ -1337,6 +1358,9 @@ def edit_tool(tool_id):
                     with open(save_path, 'wb') as f:
                         f.write(optimized_image.getvalue())
 
+                    # Generate thumbnail for list views
+                    generate_thumbnail(save_path)
+
                     # Store relative path for database
                     image_path = os.path.join('images', unique_filename)
                     app.logger.debug(f"Optimized image updated successfully: {unique_filename}")
@@ -1370,8 +1394,14 @@ def edit_tool(tool_id):
 @app.route('/data/images/<filename>')
 @auth_required
 def serve_image(filename):
-    """Serve images from the data directory"""
+    """Serve images from the data directory, with optional thumbnail support"""
     from flask import send_from_directory
+    if request.args.get('thumb') == '1':
+        base, ext = os.path.splitext(filename)
+        thumb_filename = f"{base}_thumb{ext}"
+        thumb_path = os.path.join(app.config['UPLOAD_FOLDER'], thumb_filename)
+        if os.path.isfile(thumb_path):
+            return send_from_directory(app.config['UPLOAD_FOLDER'], thumb_filename)
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
