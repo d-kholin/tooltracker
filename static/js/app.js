@@ -2,56 +2,115 @@ const ToolCard = ({ tool }) => {
   const navigateToDetail = () => {
     window.location.href = `/tool/${tool.id}`;
   };
-  
+
   const navigateToEdit = (e) => {
     e.preventDefault();
     e.stopPropagation();
     window.location.href = `/edit/${tool.id}`;
   };
-  
+
   const handleLendClick = (e) => {
     e.stopPropagation();
     // Don't prevent default - let the link navigate naturally
   };
-  
+
   const handleReturnClick = (e) => {
     e.stopPropagation();
     // Don't prevent default - let the form submit naturally
   };
-  
+
   const handleEditClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
     navigateToEdit(e);
   };
-  
+
   const handleHistoryClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
     navigateToDetail();
   };
-  
+
   const handleCardClick = (e) => {
     // Check if we clicked on an action element - be more specific
     const target = e.target;
-    
+
     // Check if the target OR any of its ancestors is an action element
-    const isActionElement = target.closest('[data-action]') || 
-                           target.closest('button') || 
-                           target.closest('form') || 
+    const isActionElement = target.closest('[data-action]') ||
+                           target.closest('button') ||
+                           target.closest('form') ||
                            target.closest('a') ||
                            target.closest('input') ||
                            target.closest('select') ||
                            target.closest('textarea');
-    
+
     if (!isActionElement) {
       navigateToDetail();
     }
   };
-  
-  return (
-    <div 
-      className="tool-card bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all duration-200 cursor-pointer group" 
+
+  // Swipe-to-return state (mobile only, lent tools only)
+  const containerRef = React.useRef(null);
+  const swipeState = React.useRef({ startX: 0, startY: 0, swiping: false });
+  const SWIPE_THRESHOLD = 80;
+
+  const onTouchStart = React.useCallback((e) => {
+    if (!tool.borrower) return;
+    const touch = e.touches[0];
+    swipeState.current = { startX: touch.clientX, startY: touch.clientY, swiping: false };
+  }, [tool.borrower]);
+
+  const onTouchMove = React.useCallback((e) => {
+    if (!tool.borrower) return;
+    const s = swipeState.current;
+    const touch = e.touches[0];
+    const dx = s.startX - touch.clientX;
+    const dy = Math.abs(touch.clientY - s.startY);
+
+    // If vertical scroll dominates, abort swipe
+    if (!s.swiping && dy > 10 && dy > Math.abs(dx)) {
+      swipeState.current.startX = 0;
+      return;
+    }
+
+    if (dx > 10) {
+      s.swiping = true;
+      const offset = Math.min(dx, 120);
+      const content = containerRef.current?.querySelector('.swipe-content');
+      if (content) {
+        containerRef.current.classList.add('swiping');
+        content.style.transform = `translateX(-${offset}px)`;
+      }
+    }
+  }, [tool.borrower]);
+
+  const onTouchEnd = React.useCallback((e) => {
+    if (!tool.borrower) return;
+    const s = swipeState.current;
+    const content = containerRef.current?.querySelector('.swipe-content');
+    if (!content) return;
+
+    const touch = e.changedTouches[0];
+    const dx = s.startX - touch.clientX;
+
+    if (s.swiping && dx >= SWIPE_THRESHOLD) {
+      // Submit the return form
+      const form = containerRef.current.querySelector('form[data-action="swipe-return"]');
+      if (form) form.submit();
+    }
+
+    // Reset
+    content.style.transform = '';
+    containerRef.current.classList.remove('swiping');
+    swipeState.current = { startX: 0, startY: 0, swiping: false };
+  }, [tool.borrower]);
+
+  const isMobile = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches;
+  const useSwipe = isMobile && !!tool.borrower;
+
+  const cardInner = (
+    <div
+      className="tool-card bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all duration-200 cursor-pointer group"
       onClick={handleCardClick}
     >
       <div className="flex items-start justify-between">
@@ -59,9 +118,12 @@ const ToolCard = ({ tool }) => {
           <div className="flex items-start gap-4 mb-3">
             {tool.image_path ? (
               <div className="flex-shrink-0">
-                <img 
-                  src={`/data/${tool.image_path}`} 
+                <img
+                  src={`/data/${tool.image_path}?thumb=1`}
+                  srcSet={`/data/${tool.image_path}?thumb=1 200w, /data/${tool.image_path} 1024w`}
+                  sizes="80px"
                   alt={tool.name}
+                  loading="lazy"
                   className="w-20 h-20 sm:w-16 sm:h-16 object-cover rounded-lg border border-gray-200 group-hover:border-brand transition-colors"
                 />
                 {/* Show badge below image on mobile only */}
@@ -215,6 +277,33 @@ const ToolCard = ({ tool }) => {
       </div>
     </div>
   );
+
+  if (useSwipe) {
+    return (
+      <div
+        ref={containerRef}
+        className="swipe-container rounded-xl"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
+        <div className="swipe-action">
+          <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+          </svg>
+          Return
+        </div>
+        <form method="POST" action={`/return/${tool.id}`} data-action="swipe-return" style={{display:'none'}}>
+          <input type="hidden" name="csrf_token" value={document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''} />
+        </form>
+        <div className="swipe-content">
+          {cardInner}
+        </div>
+      </div>
+    );
+  }
+
+  return cardInner;
 };
 
 const SearchBar = ({ searchTerm, onSearchChange }) => (
