@@ -76,7 +76,7 @@ const ToolCard = ({ tool }) => {
     if (dx > 10) {
       s.swiping = true;
       const offset = Math.min(dx, 120);
-      const content = containerRef.current?.querySelector('.swipe-content');
+      const content = containerRef.current && containerRef.current.querySelector('.swipe-content');
       if (content) {
         containerRef.current.classList.add('swiping');
         content.style.transform = `translateX(-${offset}px)`;
@@ -87,7 +87,7 @@ const ToolCard = ({ tool }) => {
   const onTouchEnd = React.useCallback((e) => {
     if (!tool.borrower) return;
     const s = swipeState.current;
-    const content = containerRef.current?.querySelector('.swipe-content');
+    const content = containerRef.current && containerRef.current.querySelector('.swipe-content');
     if (!content) return;
 
     const touch = e.changedTouches[0];
@@ -294,7 +294,7 @@ const ToolCard = ({ tool }) => {
           Return
         </div>
         <form method="POST" action={`/return/${tool.id}`} data-action="swipe-return" style={{display:'none'}}>
-          <input type="hidden" name="csrf_token" value={document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''} />
+          <input type="hidden" name="csrf_token" value={(function(){ var m = document.querySelector('meta[name="csrf-token"]'); return m ? m.getAttribute('content') : ''; })()} />
         </form>
         <div className="swipe-content">
           {cardInner}
